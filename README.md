@@ -35,11 +35,13 @@ instead of depending on `Click="Button1_Click"` in XAML.
 - New / Open / Save / Save As for paired `.xaml` and `.ps1` files.
 - Runtime-discovered toolbox for public, instantiable WPF visual element types.
 - Toolbox search and category filtering.
-- Drag and drop from the toolbox to the design surface.
+- Drag and drop from the toolbox to Canvas/Grid/StackPanel/DockPanel/WrapPanel/UniformGrid layouts and supported empty single-child containers such as Border and GroupBox.
 - Direct mouse movement for controls whose parent is a `Canvas`.
-- Optional 10-pixel snap-to-grid.
+- Arrow-key Canvas movement (1 px, or 10 px with Shift) plus optional 10-pixel mouse snap-to-grid.
+- XAML document Outline, including selection/editing of the root Window.
 - Selection of controls on the preview surface.
-- Reflection-based property browser and property editing.
+- Undo/redo for designer-side XAML changes, while text editors keep their native text undo/redo.
+- Reflection-based property browser and property editing, including Canvas/Grid/DockPanel attached properties.
 - Reflection-based event browser.
 - Double-click an event to generate PowerShell event code.
 - Double-click a control on the designer to generate its typical/default event (`Click`, `SelectionChanged`, `TextChanged`, etc.).
@@ -48,7 +50,9 @@ instead of depending on `Click="Button1_Click"` in XAML.
 - Preview-time removal of Visual Studio/Blend build-time attributes such as `x:Class`, `mc:Ignorable`, and `d:*`.
 - Preview-time removal of XAML event attributes that cannot be resolved by standalone PowerShell, while preserving the source document.
 - Automatic synchronization of named XAML controls into a generated control-reference region in the paired `.ps1` file.
+- Generated event handlers are placed in a dedicated region before `$Window.ShowDialog()`, so handlers are registered before the UI runs.
 - Existing user event code is not overwritten when control references are refreshed.
+- Save As warns before replacing an already-existing paired `.ps1` file.
 
 ### Start the designer
 
