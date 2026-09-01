@@ -32,13 +32,19 @@ function Generate-EventHandlerForName {
         return
     }
 
-    $block = "`r`n`r`n$marker`r`n" +
+    $block = "$marker`r`n" +
         $variableReference + ".Add_$EventName({`r`n" +
         "    param(`$sender, `$e)`r`n`r`n" +
         "    # TODO: Add $EventName logic for $name.`r`n" +
         "})`r`n# </XamlDesigner:Event>`r`n"
 
-    $script:State.Ui.CodeEditor.Text = $code.TrimEnd() + $block
+    $eventsEnd = '# </XamlDesigner:Events>'
+    if (-not $code.Contains($eventsEnd)) {
+        Set-DesignerStatus -Message 'The generated event region is missing from the PowerShell code-behind.'
+        return
+    }
+
+    $script:State.Ui.CodeEditor.Text = $code.Replace($eventsEnd, $block + $eventsEnd)
     $script:State.Ui.MainTabs.SelectedIndex = 2
     Set-DesignerStatus -Message "Generated PowerShell event handler: $name.$EventName"
 }
