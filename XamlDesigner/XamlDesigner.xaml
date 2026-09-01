@@ -1,0 +1,180 @@
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Name="XamlDesignerWindow"
+        Title="PowerShell XAML Designer"
+        Width="1500"
+        Height="920"
+        MinWidth="1100"
+        MinHeight="700"
+        WindowStartupLocation="CenterScreen">
+    <DockPanel>
+        <Menu DockPanel.Dock="Top">
+            <MenuItem Header="_File">
+                <MenuItem x:Name="MenuNew" Header="_New" InputGestureText="Ctrl+N"/>
+                <MenuItem x:Name="MenuOpen" Header="_Open..." InputGestureText="Ctrl+O"/>
+                <Separator/>
+                <MenuItem x:Name="MenuSave" Header="_Save" InputGestureText="Ctrl+S"/>
+                <MenuItem x:Name="MenuSaveAs" Header="Save _As..."/>
+                <Separator/>
+                <MenuItem x:Name="MenuExit" Header="E_xit"/>
+            </MenuItem>
+            <MenuItem Header="_Edit">
+                <MenuItem x:Name="MenuDelete" Header="_Delete selected control" InputGestureText="Del"/>
+                <MenuItem x:Name="MenuDuplicate" Header="_Duplicate selected control" InputGestureText="Ctrl+D"/>
+            </MenuItem>
+            <MenuItem Header="_Tools">
+                <MenuItem x:Name="MenuValidate" Header="_Validate / Apply XAML" InputGestureText="F5"/>
+                <MenuItem x:Name="MenuRefreshToolbox" Header="Refresh _Toolbox"/>
+            </MenuItem>
+            <MenuItem Header="_Help">
+                <MenuItem x:Name="MenuAbout" Header="_About"/>
+            </MenuItem>
+        </Menu>
+
+        <StatusBar DockPanel.Dock="Bottom">
+            <StatusBarItem>
+                <TextBlock x:Name="StatusText" Text="Ready"/>
+            </StatusBarItem>
+            <Separator/>
+            <StatusBarItem>
+                <TextBlock x:Name="DocumentText" Text="Untitled.xaml"/>
+            </StatusBarItem>
+        </StatusBar>
+
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="260" MinWidth="180"/>
+                <ColumnDefinition Width="5"/>
+                <ColumnDefinition Width="*" MinWidth="450"/>
+                <ColumnDefinition Width="5"/>
+                <ColumnDefinition Width="360" MinWidth="260"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Toolbox -->
+            <DockPanel Grid.Column="0" Margin="8">
+                <TextBlock DockPanel.Dock="Top" Text="Toolbox" FontWeight="Bold" FontSize="16" Margin="0,0,0,8"/>
+                <TextBox x:Name="ToolboxSearch" DockPanel.Dock="Top" Margin="0,0,0,8" ToolTip="Filter WPF controls"/>
+                <ComboBox x:Name="ToolboxCategory" DockPanel.Dock="Top" Margin="0,0,0,8" SelectedIndex="0">
+                    <ComboBoxItem Content="All"/>
+                    <ComboBoxItem Content="Controls"/>
+                    <ComboBoxItem Content="Panels"/>
+                    <ComboBoxItem Content="Shapes"/>
+                    <ComboBoxItem Content="Decorators"/>
+                    <ComboBoxItem Content="Other"/>
+                </ComboBox>
+                <ListBox x:Name="ToolboxList" DisplayMemberPath="DisplayName"/>
+            </DockPanel>
+
+            <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch"/>
+
+            <!-- Main editor -->
+            <TabControl x:Name="MainTabs" Grid.Column="2" Margin="4,8,4,8">
+                <TabItem Header="Designer">
+                    <DockPanel>
+                        <ToolBar DockPanel.Dock="Top">
+                            <Button x:Name="ButtonDelete" Content="Delete" Padding="10,2"/>
+                            <Button x:Name="ButtonDuplicate" Content="Duplicate" Padding="10,2"/>
+                            <Separator/>
+                            <CheckBox x:Name="CheckSnapToGrid" Content="Snap 10 px" IsChecked="True" VerticalAlignment="Center" Margin="6,0"/>
+                        </ToolBar>
+                        <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" Background="#FFE9E9E9">
+                            <Grid Margin="24">
+                                <Border x:Name="PreviewBorder"
+                                        Background="White"
+                                        BorderBrush="#FF777777"
+                                        BorderThickness="1"
+                                        HorizontalAlignment="Left"
+                                        VerticalAlignment="Top"
+                                        MinWidth="640"
+                                        MinHeight="420"
+                                        AllowDrop="True">
+                                    <Grid x:Name="PreviewHost" Background="White"/>
+                                </Border>
+                            </Grid>
+                        </ScrollViewer>
+                    </DockPanel>
+                </TabItem>
+                <TabItem Header="XAML">
+                    <DockPanel>
+                        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="6">
+                            <Button x:Name="ButtonApplyXaml" Content="Validate / Apply" Padding="12,4"/>
+                            <Button x:Name="ButtonFormatXaml" Content="Format XML" Padding="12,4" Margin="6,0,0,0"/>
+                        </StackPanel>
+                        <TextBox x:Name="XamlEditor"
+                                 FontFamily="Consolas"
+                                 FontSize="14"
+                                 AcceptsReturn="True"
+                                 AcceptsTab="True"
+                                 TextWrapping="NoWrap"
+                                 HorizontalScrollBarVisibility="Auto"
+                                 VerticalScrollBarVisibility="Auto"
+                                 SpellCheck.IsEnabled="False"/>
+                    </DockPanel>
+                </TabItem>
+                <TabItem Header="PowerShell code-behind">
+                    <DockPanel>
+                        <TextBlock DockPanel.Dock="Top"
+                                   Margin="6"
+                                   Text="Control references are regenerated between marker comments. Event blocks and your code are preserved."
+                                   TextWrapping="Wrap"/>
+                        <TextBox x:Name="CodeEditor"
+                                 FontFamily="Consolas"
+                                 FontSize="14"
+                                 AcceptsReturn="True"
+                                 AcceptsTab="True"
+                                 TextWrapping="NoWrap"
+                                 HorizontalScrollBarVisibility="Auto"
+                                 VerticalScrollBarVisibility="Auto"
+                                 SpellCheck.IsEnabled="False"/>
+                    </DockPanel>
+                </TabItem>
+            </TabControl>
+
+            <GridSplitter Grid.Column="3" Width="5" HorizontalAlignment="Stretch"/>
+
+            <!-- Properties / Events -->
+            <DockPanel Grid.Column="4" Margin="8">
+                <TextBlock x:Name="SelectedControlText" DockPanel.Dock="Top" Text="No control selected" FontWeight="Bold" FontSize="15" Margin="0,0,0,8"/>
+                <TabControl>
+                    <TabItem Header="Properties">
+                        <DockPanel Margin="4">
+                            <StackPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
+                                <TextBlock x:Name="PropertyNameText" Text="Select a property" FontWeight="SemiBold"/>
+                                <TextBox x:Name="PropertyValueText" Margin="0,4,0,4"/>
+                                <Button x:Name="ButtonApplyProperty" Content="Apply property" Padding="10,4"/>
+                            </StackPanel>
+                            <DataGrid x:Name="PropertyGrid"
+                                      IsReadOnly="True"
+                                      AutoGenerateColumns="False"
+                                      SelectionMode="Single"
+                                      HeadersVisibility="Column">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Property" Binding="{Binding Name}" Width="*"/>
+                                    <DataGridTextColumn Header="Value" Binding="{Binding Value}" Width="1.3*"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </DockPanel>
+                    </TabItem>
+                    <TabItem Header="Events">
+                        <DockPanel Margin="4">
+                            <TextBlock DockPanel.Dock="Top"
+                                       Margin="0,0,0,6"
+                                       Text="Double-click an event to generate PowerShell code."
+                                       TextWrapping="Wrap"/>
+                            <DataGrid x:Name="EventGrid"
+                                      IsReadOnly="True"
+                                      AutoGenerateColumns="False"
+                                      SelectionMode="Single"
+                                      HeadersVisibility="Column">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Event" Binding="{Binding Name}" Width="*"/>
+                                    <DataGridTextColumn Header="Declared by" Binding="{Binding DeclaringType}" Width="1.2*"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </DockPanel>
+                    </TabItem>
+                </TabControl>
+            </DockPanel>
+        </Grid>
+    </DockPanel>
+</Window>

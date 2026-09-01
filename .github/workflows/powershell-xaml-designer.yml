@@ -1,0 +1,22 @@
+name: PowerShell XAML Designer checks
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Parse PowerShell and XAML
+        shell: pwsh
+        run: .\Tests\Test-Repository.ps1
+      - name: Verify WPF assemblies can load
+        shell: pwsh
+        run: |
+          Add-Type -AssemblyName WindowsBase
+          Add-Type -AssemblyName PresentationCore
+          Add-Type -AssemblyName PresentationFramework
+          [System.Windows.Window] | Out-String | Write-Host
