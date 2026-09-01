@@ -69,7 +69,18 @@ function Register-UiEvents {
         if ($null -eq $item -or [string]::IsNullOrWhiteSpace([string]$item.Tag)) {
             return
         }
-        $runtime = Find-VisualElementByName -Root $ui.PreviewHost -Name ([string]$item.Tag)
+        $targetName = [string]$item.Tag
+        $runtime = $null
+        if (
+            $script:State.PreviewWindow -is [System.Windows.Window] -and
+            $script:State.PreviewWindow.Name -eq $targetName
+        ) {
+            $runtime = $script:State.PreviewWindow
+        }
+        else {
+            $runtime = Find-VisualElementByName -Root $ui.PreviewHost -Name $targetName
+        }
+
         if ($runtime -is [System.Windows.FrameworkElement]) {
             Select-DesignerElement -Element $runtime
         }
