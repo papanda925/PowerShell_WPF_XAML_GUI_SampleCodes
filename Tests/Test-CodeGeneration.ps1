@@ -20,6 +20,7 @@ $coreDirectory = Join-Path $designerDirectory 'Core'
 . (Join-Path $coreDirectory 'State.ps1')
 . (Join-Path $coreDirectory 'Xml.ps1')
 . (Join-Path $coreDirectory 'CodeBehind.ps1')
+. (Join-Path $coreDirectory 'History.ps1')
 . (Join-Path $coreDirectory 'Events.ps1')
 
 $script:State.BaseDirectory = $designerDirectory
@@ -40,7 +41,7 @@ if ($referenceLines -notcontains $expectedReference) {
     throw "Expected generated control reference was not found. Actual: $($referenceLines -join '; ')"
 }
 
-$code = Get-Content -LiteralPath (Join-Path $designerDirectory 'Templates\BlankWindow.ps1') -Raw
+$code = [System.IO.File]::ReadAllText((Join-Path $designerDirectory 'Templates\BlankWindow.ps1'))
 $script:State.Ui = @{
     CodeEditor = [pscustomobject]@{ Text = $code }
     MainTabs = [pscustomobject]@{ SelectedIndex = 0 }
