@@ -255,15 +255,87 @@ function Register-UiEvents {
 
     $script:State.Window.Add_KeyDown({
         param($sender, $e)
-        $ctrl = ([System.Windows.Input.Keyboard]::Modifiers -band [System.Windows.Input.ModifierKeys]::Control) -ne 0
-        if ($ctrl -and $e.Key -eq [System.Windows.Input.Key]::N) { New-XamlDesignerDocument; $e.Handled = $true; return }
-        if ($ctrl -and $e.Key -eq [System.Windows.Input.Key]::O) { Open-XamlDesignerDocument; $e.Handled = $true; return }
-        if ($ctrl -and $e.Key -eq [System.Windows.Input.Key]::S) { Save-XamlDesignerDocument; $e.Handled = $true; return }
-        if ($ctrl -and $e.Key -eq [System.Windows.Input.Key]::D) { Duplicate-SelectedElement; $e.Handled = $true; return }
-        if ($ctrl -and $e.Key -eq [System.Windows.Input.Key]::Z) { Undo-XamlDesignerChange; $e.Handled = $true; return }
-        if ($ctrl -and $e.Key -eq [System.Windows.Input.Key]::Y) { Redo-XamlDesignerChange; $e.Handled = $true; return }
-        if ($e.Key -eq [System.Windows.Input.Key]::Delete) { Delete-SelectedElement; $e.Handled = $true; return }
-        if ($e.Key -eq [System.Windows.Input.Key]::F5) { [void](Apply-XamlEditorText); $e.Handled = $true; return }
+
+        $modifiers = [System.Windows.Input.Keyboard]::Modifiers
+        $ctrl = ($modifiers -band [System.Windows.Input.ModifierKeys]::Control) -ne 0
+        $shift = ($modifiers -band [System.Windows.Input.ModifierKeys]::Shift) -ne 0
+        $focused = [System.Windows.Input.Keyboard]::FocusedElement
+        $isTextEditing = $focused -is [System.Windows.Controls.TextBox]
+
+        if ($ctrl -and $e.Key -eq [System.Windows.Input.Key]::N) {
+            New-XamlDesignerDocument
+            $e.Handled = $true
+            return
+        }
+        if ($ctrl -and $e.Key -eq [System.Windows.Input.Key]::O) {
+            Open-XamlDesignerDocument
+            $e.Handled = $true
+            return
+        }
+        if ($ctrl -and $e.Key -eq [System.Windows.Input.Key]::S) {
+            Save-XamlDesignerDocument
+            $e.Handled = $true
+            return
+        }
+
+        if ($ctrl -and $e.Key -eq [System.Windows.Input.Key]::Z) {
+            if ($isTextEditing -and $focused.CanUndo) {
+                $focused.Undo()
+                Set-DesignerStatus -Message 'Text edit undone.'
+            }
+            else {
+                Undo-XamlDesignerChange
+            }
+            $e.Handled = $true
+            return
+        }
+
+        if ($ctrl -and $e.Key -eq [System.Windows.Input.Key]::Y) {
+            if ($isTextEditing -and $focused.CanRedo) {
+                $focused.Redo()
+                Set-DesignerStatus -Message 'Text edit redone.'
+            }
+            else {
+                Redo-XamlDesignerChange
+            }
+            $e.Handled = $true
+            return
+        }
+
+        if ($isTextEditing) {
+            return
+        }
+
+        if ($ctrl -and $e.Key -eq [System.Windows.Input.Key]::D) {
+            Duplicate-SelectedElement
+            $e.Handled = $true
+            return
+        }
+        if ($e.Key -eq [System.Windows.Input.Key]::Delete) {
+            Delete-SelectedElement
+            $e.Handled = $true
+            return
+        }
+        if ($e.Key -eq [System.Windows.Input.Key]::F5) {
+            [void](Apply-XamlEditorText)
+            $e.Handled = $true
+            return
+        }
+
+        $step = if ($shift) { 10.0 } else { 1.0 }
+        switch ($e.Key) {
+            ([System.Windows.Input.Key]::Left) {
+                if (Move-SelectedCanvasElementBy -DeltaX (-$step) -DeltaY 0) { $e.Handled = $true }
+            }
+            ([System.Windows.Input.Key]::Right) {
+                if (Move-SelectedCanvasElementBy -DeltaX $step -DeltaY 0) { $e.Handled = $true }
+            }
+            ([System.Windows.Input.Key]::Up) {
+                if (Move-SelectedCanvasElementBy -DeltaX 0 -DeltaY (-$step)) { $e.Handled = $true }
+            }
+            ([System.Windows.Input.Key]::Down) {
+                if (Move-SelectedCanvasElementBy -DeltaX 0 -DeltaY $step) { $e.Handled = $true }
+            }
+        }
     })
 }
-
