@@ -83,7 +83,9 @@ For a new document, the default root content is:
 
 Drag a toolbox item onto the preview to create a named XAML element. The new control receives practical default size/content attributes so that it is visible immediately.
 
-Controls inside a `Canvas` can be moved directly by mouse. Their `Canvas.Left` and `Canvas.Top` values are written back to the XML document.
+Controls inside a `Canvas` can be moved directly by mouse. Their `Canvas.Left` and `Canvas.Top` values are written back to the XML document. Arrow keys nudge a selected Canvas control by 1 pixel; hold Shift for 10 pixels.
+
+Supported panels can also receive toolbox drops. Empty `Border`, `GroupBox`, `ScrollViewer`, and `Viewbox` elements can accept a single child. The Outline tab displays the complete XAML tree, including the root `Window`, so Window properties can be edited without switching to source.
 
 ### XAML source
 
@@ -102,7 +104,7 @@ XML errors report line and position when available.
 
 Selecting a visual element uses .NET reflection and `TypeDescriptor` to enumerate public read/write properties that can reasonably be represented as strings.
 
-High-value WPF properties are sorted near the top. `Canvas.Left`, `Canvas.Top`, and `Panel.ZIndex` are added as synthetic attached properties when applicable.
+High-value WPF properties are sorted near the top. Attached properties such as `Canvas.Left`, `Canvas.Top`, `Grid.Row`, `Grid.Column`, row/column spans, `DockPanel.Dock`, and `Panel.ZIndex` are surfaced when applicable.
 
 A property change is first applied to the XML DOM and then reloaded into WPF. If WPF rejects the value, the XML change is rolled back.
 
@@ -131,7 +133,7 @@ Double-clicking a control on the designer chooses a typical event when possible,
 7. `MouseDoubleClick`
 8. `Loaded`
 
-The same control/event combination is not generated twice.
+The same control/event combination is not generated twice. Generated handlers are inserted into a dedicated event region before `$Window.ShowDialog()`, which guarantees that handlers are registered before the window is shown.
 
 ## Visual Studio / Blend XAML compatibility
 
@@ -153,8 +155,12 @@ The paired PowerShell template uses the same principle at runtime. UI structure 
 | `Ctrl+N` | New pair |
 | `Ctrl+O` | Open XAML |
 | `Ctrl+S` | Save pair |
+| `Ctrl+Z` | Undo designer change, or native text undo while editing text |
+| `Ctrl+Y` | Redo designer change, or native text redo while editing text |
 | `Ctrl+D` | Duplicate selected control |
 | `Delete` | Delete selected control |
+| Arrow keys | Move selected Canvas control by 1 px |
+| `Shift` + Arrow keys | Move selected Canvas control by 10 px |
 | `F5` | Validate / Apply XAML |
 
 ## Current boundaries
@@ -172,7 +178,6 @@ The current implementation does **not** yet provide:
 - binding editors,
 - resource/style/template designers,
 - custom control assembly loading,
-- undo/redo history,
 - a project explorer.
 
 It can still open and preview many existing standard-WPF XAML files. Drag/move behavior is most complete with `Canvas` layout. Nonvisual XAML objects such as brushes, transforms, resources, bindings, styles, and templates are edited in source at this stage rather than exposed as toolbox controls.
@@ -196,12 +201,11 @@ The designer itself follows the same architecture it promotes: XAML for the scre
 
 The next editor features with the highest value are:
 
-1. Undo/redo command history.
-2. WPF adorners for resize handles and selection rectangle.
-3. Grid row/column visual editor.
-4. XAML token coloring and tag/attribute completion driven by reflected WPF metadata.
-5. Resource/style/template tree editor.
-6. Custom assembly loading so third-party WPF controls can appear in the toolbox.
-7. Project folder mode for multiple `.xaml` / `.ps1` pairs.
+1. WPF adorners for resize handles and selection rectangle.
+2. Grid row/column visual editor.
+3. XAML token coloring and tag/attribute completion driven by reflected WPF metadata.
+4. Resource/style/template tree editor.
+5. Custom assembly loading so third-party WPF controls can appear in the toolbox.
+6. Project folder mode for multiple `.xaml` / `.ps1` pairs.
 
 These can remain PowerShell-only; no C# helper assembly is required for the core design.
