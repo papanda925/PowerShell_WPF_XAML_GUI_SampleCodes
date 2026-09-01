@@ -29,10 +29,26 @@ function New-XmlDocumentFromText {
         [string]$Text
     )
 
-    $document = [System.Xml.XmlDocument]::new()
-    $document.PreserveWhitespace = $false
-    $document.LoadXml($Text)
-    return $document
+    # Treat XAML as data. DTD processing and external resource resolution are
+    # disabled explicitly so opening a document never performs XML network/file
+    # resolution behind the user's back.
+    $settings = [System.Xml.XmlReaderSettings]::new()
+    $settings.DtdProcessing = [System.Xml.DtdProcessing]::Prohibit
+    $settings.XmlResolver = $null
+
+    $stringReader = [System.IO.StringReader]::new($Text)
+    $xmlReader = [System.Xml.XmlReader]::Create($stringReader, $settings)
+    try {
+        $document = [System.Xml.XmlDocument]::new()
+        $document.PreserveWhitespace = $false
+        $document.XmlResolver = $null
+        $document.Load($xmlReader)
+        return $document
+    }
+    finally {
+        $xmlReader.Close()
+        $stringReader.Close()
+    }
 }
 
 function Get-BlankXamlText {

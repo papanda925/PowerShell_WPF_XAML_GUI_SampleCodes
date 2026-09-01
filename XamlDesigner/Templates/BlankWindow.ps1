@@ -88,8 +88,19 @@ $xamlFileName = 'Untitled.xaml'
 # </XamlDesigner:XamlFile>
 
 $xamlPath = Join-Path $scriptDirectory $xamlFileName
-[xml]$sourceXamlDocument = Get-Content -LiteralPath $xamlPath -Raw
-[xml]$runtimeXamlDocument = ConvertTo-PowerShellRuntimeXaml -Document $sourceXamlDocument
+$xmlSettings = [System.Xml.XmlReaderSettings]::new()
+$xmlSettings.DtdProcessing = [System.Xml.DtdProcessing]::Prohibit
+$xmlSettings.XmlResolver = $null
+$sourceReader = [System.Xml.XmlReader]::Create($xamlPath, $xmlSettings)
+try {
+    [System.Xml.XmlDocument]$sourceXamlDocument = [System.Xml.XmlDocument]::new()
+    $sourceXamlDocument.XmlResolver = $null
+    $sourceXamlDocument.Load($sourceReader)
+}
+finally {
+    $sourceReader.Close()
+}
+[System.Xml.XmlDocument]$runtimeXamlDocument = ConvertTo-PowerShellRuntimeXaml -Document $sourceXamlDocument
 
 $reader = [System.Xml.XmlNodeReader]::new($runtimeXamlDocument)
 try {

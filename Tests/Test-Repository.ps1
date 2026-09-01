@@ -18,7 +18,18 @@ Get-ChildItem -LiteralPath $repositoryRoot -Recurse -File -Include *.ps1,*.psm1 
 
 Get-ChildItem -LiteralPath $repositoryRoot -Recurse -File -Include *.xaml | ForEach-Object {
     try {
-        [xml]$null = Get-Content -LiteralPath $_.FullName -Raw
+        $settings = [System.Xml.XmlReaderSettings]::new()
+        $settings.DtdProcessing = [System.Xml.DtdProcessing]::Prohibit
+        $settings.XmlResolver = $null
+        $reader = [System.Xml.XmlReader]::Create($_.FullName, $settings)
+        try {
+            $document = [System.Xml.XmlDocument]::new()
+            $document.XmlResolver = $null
+            $document.Load($reader)
+        }
+        finally {
+            $reader.Close()
+        }
     }
     catch {
         $errorsFound.Add("XML parse error: $($_.FullName): $($_.Exception.Message)")
