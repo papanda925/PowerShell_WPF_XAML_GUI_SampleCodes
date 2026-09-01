@@ -130,6 +130,7 @@ function Refresh-Preview {
             throw 'The root XAML element must be a WPF Window for this designer.'
         }
 
+        $script:State.PreviewWindow = $loadedRoot
         $content = $loadedRoot.Content
         $loadedRoot.Content = $null
 
@@ -148,7 +149,14 @@ function Refresh-Preview {
 
         $script:State.SelectedRuntimeElement = $null
         if ($KeepSelection -and -not [string]::IsNullOrWhiteSpace($selectionName)) {
-            $runtime = Find-VisualElementByName -Root $host -Name $selectionName
+            $runtime = $null
+            if ($loadedRoot.Name -eq $selectionName) {
+                $runtime = $loadedRoot
+            }
+            else {
+                $runtime = Find-VisualElementByName -Root $host -Name $selectionName
+            }
+
             if ($null -ne $runtime) {
                 $script:State.SelectedRuntimeElement = $runtime
             }
@@ -163,6 +171,7 @@ function Refresh-Preview {
         return $true
     }
     catch {
+        $script:State.PreviewWindow = $null
         Set-DesignerStatus -Message ("XAML preview error: " + $_.Exception.Message)
         return $false
     }
