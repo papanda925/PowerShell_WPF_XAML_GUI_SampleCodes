@@ -5,9 +5,9 @@ function Initialize-UiReferences {
     )
 
     $names = @(
-        'MenuNew','MenuOpen','MenuSave','MenuSaveAs','MenuExit','MenuDelete','MenuDuplicate','MenuValidate','MenuRefreshToolbox','MenuAbout',
-        'StatusText','DocumentText','ToolboxSearch','ToolboxCategory','ToolboxList','MainTabs','PreviewBorder','PreviewHost','CheckSnapToGrid',
-        'ButtonDelete','ButtonDuplicate','ButtonApplyXaml','ButtonFormatXaml','XamlEditor','CodeEditor','SelectedControlText','PropertyGrid',
+        'MenuNew','MenuOpen','MenuSave','MenuSaveAs','MenuExit','MenuUndo','MenuRedo','MenuDelete','MenuDuplicate','MenuValidate','MenuRefreshToolbox','MenuAbout',
+        'StatusText','DocumentText','ToolboxSearch','ToolboxCategory','ToolboxList','OutlineTree','MainTabs','PreviewBorder','PreviewHost','CheckSnapToGrid',
+        'ButtonDelete','ButtonDuplicate','ButtonApplyXaml','ButtonFormatXaml','ButtonValidateCode','XamlEditor','CodeEditor','SelectedControlText','PropertyGrid',
         'PropertyNameText','PropertyValueText','ButtonApplyProperty','EventGrid'
     )
 
@@ -216,10 +216,16 @@ function Register-UiEvents {
             $left = [System.Windows.Controls.Canvas]::GetLeft($element)
             $top = [System.Windows.Controls.Canvas]::GetTop($element)
             if (-not [double]::IsNaN($left) -and -not [double]::IsNaN($top)) {
-                Push-XamlUndoSnapshot
-                Update-SelectedCanvasPosition -Left $left -Top $top
-                Refresh-PropertyGrid
-                Set-DesignerStatus -Message "Moved $($script:State.SelectedElementName) to $left, $top."
+                $moved = (
+                    [math]::Abs($left - $script:State.DesignerDragStartLeft) -gt 0.01 -or
+                    [math]::Abs($top - $script:State.DesignerDragStartTop) -gt 0.01
+                )
+                if ($moved) {
+                    Push-XamlUndoSnapshot
+                    Update-SelectedCanvasPosition -Left $left -Top $top
+                    Refresh-PropertyGrid
+                    Set-DesignerStatus -Message "Moved $($script:State.SelectedElementName) to $left, $top."
+                }
             }
             $element.ReleaseMouseCapture()
         }

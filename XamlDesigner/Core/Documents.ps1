@@ -82,15 +82,16 @@ function Apply-XamlEditorText {
     $old = $script:State.XamlDocument
     $oldText = if ($null -ne $old) { ConvertTo-FormattedXml -Document $old } else { $null }
     $candidateText = ConvertTo-FormattedXml -Document $candidate
-    if (-not $script:State.IsRestoringHistory -and $null -ne $oldText -and $oldText -cne $candidateText) {
-        Push-XamlUndoSnapshot -Text $oldText
-    }
+    $recordHistory = (-not $script:State.IsRestoringHistory -and $null -ne $oldText -and $oldText -cne $candidateText)
     $script:State.XamlDocument = $candidate
     if (-not (Refresh-Preview -KeepSelection)) {
         $script:State.XamlDocument = $old
         return $false
     }
 
+    if ($recordHistory) {
+        Push-XamlUndoSnapshot -Text $oldText
+    }
     Refresh-XamlTextFromDocument
     Sync-CodeEditor
     return $true

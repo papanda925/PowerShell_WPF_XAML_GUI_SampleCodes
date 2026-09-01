@@ -136,7 +136,6 @@ function Apply-SelectedProperty {
     $propertyName = [string]$selected.Name
     $value = $script:State.Ui.PropertyValueText.Text
     $oldXml = ConvertTo-FormattedXml -Document $script:State.XamlDocument
-    Push-XamlUndoSnapshot -Text $oldXml
     $oldName = $script:State.SelectedElementName
 
     try {
@@ -164,6 +163,7 @@ function Apply-SelectedProperty {
         if (-not (Refresh-Preview -KeepSelection)) {
             throw 'The property value is not valid for this XAML element.'
         }
+        Push-XamlUndoSnapshot -Text $oldXml
         Refresh-XamlTextFromDocument
         Sync-CodeEditor
         Set-DesignerStatus -Message "Applied $propertyName to $($script:State.SelectedElementName)."

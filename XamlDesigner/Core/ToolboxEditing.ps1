@@ -112,14 +112,13 @@ function Add-ToolboxElementToDocument {
         [double]$Top = 20
     )
 
-    Push-XamlUndoSnapshot
-
     $container = Get-PrimaryDesignContainerNode
     if ($null -eq $container) {
         Set-DesignerStatus -Message 'No supported root layout container was found. Add a Canvas/Grid/StackPanel first in XAML source.'
         return
     }
 
+    Push-XamlUndoSnapshot
     $node = $script:State.XamlDocument.CreateElement($Type.Name, $script:PresentationNs)
     $isCanvas = $container.LocalName -eq 'Canvas'
     $name = Set-DefaultNewElementAttributes -Node $node -Type $Type -Left $Left -Top $Top -CanvasParent:$isCanvas

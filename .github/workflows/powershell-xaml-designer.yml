@@ -20,3 +20,7 @@ jobs:
           Add-Type -AssemblyName PresentationCore
           Add-Type -AssemblyName PresentationFramework
           [System.Windows.Window] | Out-String | Write-Host
+
+      - name: Smoke test designer startup in STA
+        shell: cmd
+        run: powershell.exe -NoProfile -STA -ExecutionPolicy Bypass -File .\Tests\Test-DesignerStartup.ps1
