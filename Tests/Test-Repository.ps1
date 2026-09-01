@@ -25,9 +25,37 @@ Get-ChildItem -LiteralPath $repositoryRoot -Recurse -File -Include *.xaml | ForE
     }
 }
 
+$requiredFiles = @(
+    'XamlDesigner\Start-XamlDesigner.ps1',
+    'XamlDesigner\XamlDesigner.xaml',
+    'XamlDesigner\XamlDesigner.Core.psm1',
+    'XamlDesigner\Templates\BlankWindow.xaml',
+    'XamlDesigner\Templates\BlankWindow.ps1'
+)
+foreach ($relativePath in $requiredFiles) {
+    if (-not (Test-Path -LiteralPath (Join-Path $repositoryRoot $relativePath))) {
+        $errorsFound.Add("Required designer file is missing: $relativePath")
+    }
+}
+
+$templateCodePath = Join-Path $repositoryRoot 'XamlDesigner\Templates\BlankWindow.ps1'
+if (Test-Path -LiteralPath $templateCodePath) {
+    $templateCode = Get-Content -LiteralPath $templateCodePath -Raw
+    foreach ($marker in @(
+        '# <XamlDesigner:XamlFile>',
+        '# </XamlDesigner:XamlFile>',
+        '# <XamlDesigner:ControlReferences>',
+        '# </XamlDesigner:ControlReferences>'
+    )) {
+        if (-not $templateCode.Contains($marker)) {
+            $errorsFound.Add("Generated-code marker is missing from BlankWindow.ps1: $marker")
+        }
+    }
+}
+
 if ($errorsFound.Count -gt 0) {
     $errorsFound | ForEach-Object { Write-Error $_ }
     throw "$($errorsFound.Count) repository validation error(s) found."
 }
 
-Write-Host 'PowerShell syntax and XAML/XML well-formedness checks passed.'
+Write-Host 'PowerShell syntax, XAML/XML well-formedness, required files, and generated-code marker checks passed.'

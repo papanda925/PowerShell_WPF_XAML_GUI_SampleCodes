@@ -104,7 +104,7 @@ Selecting a visual element uses .NET reflection and `TypeDescriptor` to enumerat
 
 High-value WPF properties are sorted near the top. `Canvas.Left`, `Canvas.Top`, and `Panel.ZIndex` are added as synthetic attached properties when applicable.
 
-A property change is first applied to the XML DOM and then reloaded into WPF. If WPF rejectss the value, the XML change is rolled back.
+A property change is first applied to the XML DOM and then reloaded into WPF. If WPF rejects the value, the XML change is rolled back.
 
 ### Events
 
