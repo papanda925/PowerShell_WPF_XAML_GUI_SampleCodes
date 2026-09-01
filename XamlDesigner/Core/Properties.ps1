@@ -5,7 +5,11 @@ function Get-SimpleEditableProperties {
     )
 
     $preferredOrder = @(
-        'Name', 'Width', 'Height', 'MinWidth', 'MinHeight', 'MaxWidth', 'MaxHeight',
+        'Name',
+        'Canvas.Left', 'Canvas.Top',
+        'Grid.Row', 'Grid.Column', 'Grid.RowSpan', 'Grid.ColumnSpan',
+        'DockPanel.Dock', 'Panel.ZIndex',
+        'Width', 'Height', 'MinWidth', 'MinHeight', 'MaxWidth', 'MaxHeight',
         'Margin', 'HorizontalAlignment', 'VerticalAlignment', 'Visibility', 'IsEnabled',
         'Background', 'Foreground', 'BorderBrush', 'BorderThickness',
         'FontFamily', 'FontSize', 'FontWeight', 'FontStyle',
@@ -13,13 +17,30 @@ function Get-SimpleEditableProperties {
     )
 
     $items = [System.Collections.Generic.List[object]]::new()
-    if ($Element.Parent -is [System.Windows.Controls.Canvas]) {
+    $parent = $Element.Parent
+
+    if ($parent -is [System.Windows.Controls.Canvas]) {
         $left = [System.Windows.Controls.Canvas]::GetLeft($Element)
         $top = [System.Windows.Controls.Canvas]::GetTop($Element)
         if ([double]::IsNaN($left)) { $left = 0 }
         if ([double]::IsNaN($top)) { $top = 0 }
+
         $items.Add([pscustomobject]@{ Name = 'Canvas.Left'; Value = [string]$left; TypeName = 'System.Double'; IsAttached = $true })
         $items.Add([pscustomobject]@{ Name = 'Canvas.Top'; Value = [string]$top; TypeName = 'System.Double'; IsAttached = $true })
+    }
+
+    if ($parent -is [System.Windows.Controls.Grid]) {
+        $items.Add([pscustomobject]@{ Name = 'Grid.Row'; Value = [string][System.Windows.Controls.Grid]::GetRow($Element); TypeName = 'System.Int32'; IsAttached = $true })
+        $items.Add([pscustomobject]@{ Name = 'Grid.Column'; Value = [string][System.Windows.Controls.Grid]::GetColumn($Element); TypeName = 'System.Int32'; IsAttached = $true })
+        $items.Add([pscustomobject]@{ Name = 'Grid.RowSpan'; Value = [string][System.Windows.Controls.Grid]::GetRowSpan($Element); TypeName = 'System.Int32'; IsAttached = $true })
+        $items.Add([pscustomobject]@{ Name = 'Grid.ColumnSpan'; Value = [string][System.Windows.Controls.Grid]::GetColumnSpan($Element); TypeName = 'System.Int32'; IsAttached = $true })
+    }
+
+    if ($parent -is [System.Windows.Controls.DockPanel]) {
+        $items.Add([pscustomobject]@{ Name = 'DockPanel.Dock'; Value = [string][System.Windows.Controls.DockPanel]::GetDock($Element); TypeName = 'System.Windows.Controls.Dock'; IsAttached = $true })
+    }
+
+    if ($parent -is [System.Windows.Controls.Panel]) {
         $items.Add([pscustomobject]@{ Name = 'Panel.ZIndex'; Value = [string][System.Windows.Controls.Panel]::GetZIndex($Element); TypeName = 'System.Int32'; IsAttached = $true })
     }
 
@@ -41,7 +62,12 @@ function Get-SimpleEditableProperties {
                 $text = ''
             }
             elseif ($converter.CanConvertTo([string])) {
-                try { $text = $converter.ConvertToInvariantString($value) } catch { $text = [string]$value }
+                try {
+                    $text = $converter.ConvertToInvariantString($value)
+                }
+                catch {
+                    $text = [string]$value
+                }
             }
             else {
                 $text = [string]$value
@@ -63,9 +89,11 @@ function Get-SimpleEditableProperties {
         $index = [array]::IndexOf($preferredOrder, $_.Name)
         if ($index -lt 0) { 1000 } else { $index }
     } }, Name)
+
     foreach ($item in $ordered) {
         $items.Add($item)
     }
+
     return $items
 }
 
