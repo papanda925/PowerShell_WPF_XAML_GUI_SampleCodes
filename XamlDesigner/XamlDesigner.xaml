@@ -113,10 +113,15 @@
                 </TabItem>
                 <TabItem Header="PowerShell code-behind">
                     <DockPanel>
-                        <TextBlock DockPanel.Dock="Top"
-                                   Margin="6"
-                                   Text="Control references are regenerated between marker comments. Event blocks and your code are preserved."
-                                   TextWrapping="Wrap"/>
+                        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="6">
+                            <TextBlock Text="Control references are regenerated between marker comments. Event blocks and your code are preserved."
+                                       TextWrapping="Wrap"
+                                       VerticalAlignment="Center"/>
+                            <Button x:Name="ButtonValidateCode"
+                                    Content="Validate PowerShell"
+                                    Padding="12,4"
+                                    Margin="12,0,0,0"/>
+                        </StackPanel>
                         <TextBox x:Name="CodeEditor"
                                  FontFamily="Consolas"
                                  FontSize="14"

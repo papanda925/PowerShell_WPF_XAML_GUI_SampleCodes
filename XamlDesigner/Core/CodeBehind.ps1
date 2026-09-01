@@ -66,3 +66,23 @@ function Sync-CodeEditor {
     $code = Sync-CodeBehindControlReferences -Code $code
     $script:State.Ui.CodeEditor.Text = $code
 }
+
+function Test-CodeEditorPowerShell {
+    $tokens = $null
+    $parseErrors = $null
+    [void][System.Management.Automation.Language.Parser]::ParseInput(
+        $script:State.Ui.CodeEditor.Text,
+        [ref]$tokens,
+        [ref]$parseErrors
+    )
+
+    if ($null -ne $parseErrors -and $parseErrors.Count -gt 0) {
+        $first = $parseErrors[0]
+        $message = "PowerShell error at line $($first.Extent.StartLineNumber), column $($first.Extent.StartColumnNumber): $($first.Message)"
+        Set-DesignerStatus -Message $message
+        return $false
+    }
+
+    Set-DesignerStatus -Message 'PowerShell code-behind syntax is valid.'
+    return $true
+}

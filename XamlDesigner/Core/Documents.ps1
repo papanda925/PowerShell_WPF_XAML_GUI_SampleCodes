@@ -104,6 +104,16 @@ function Save-XamlDesignerDocument {
         return
     }
 
+    if (-not (Test-CodeEditorPowerShell)) {
+        [System.Windows.MessageBox]::Show(
+            'The PowerShell code-behind contains a syntax error. Fix the error before saving.',
+            'Save blocked',
+            [System.Windows.MessageBoxButton]::OK,
+            [System.Windows.MessageBoxImage]::Warning
+        ) | Out-Null
+        return
+    }
+
     if ($SaveAs -or [string]::IsNullOrWhiteSpace($script:State.CurrentXamlPath)) {
         $dialog = [Microsoft.Win32.SaveFileDialog]::new()
         $dialog.Filter = 'XAML files (*.xaml)|*.xaml'

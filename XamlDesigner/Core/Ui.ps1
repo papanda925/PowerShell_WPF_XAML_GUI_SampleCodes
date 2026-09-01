@@ -50,6 +50,7 @@ function Register-UiEvents {
     $ui.ButtonDelete.Add_Click({ Delete-SelectedElement })
     $ui.ButtonDuplicate.Add_Click({ Duplicate-SelectedElement })
     $ui.ButtonApplyXaml.Add_Click({ [void](Apply-XamlEditorText) })
+    $ui.ButtonValidateCode.Add_Click({ [void](Test-CodeEditorPowerShell) })
     $ui.ButtonFormatXaml.Add_Click({
         try {
             $document = New-XmlDocumentFromText -Text $ui.XamlEditor.Text
