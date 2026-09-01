@@ -33,15 +33,23 @@ function Set-DefaultNewElementAttributes {
         'ListBox' { @{ Width = '180'; Height = '120' }; break }
         'ListView' { @{ Width = '220'; Height = '140' }; break }
         'TreeView' { @{ Width = '220'; Height = '180' }; break }
+        'DataGrid' { @{ Width = '320'; Height = '180'; AutoGenerateColumns = 'True' }; break }
         'Slider' { @{ Width = '180'; Height = '30'; Minimum = '0'; Maximum = '100'; Value = '50' }; break }
         'ProgressBar' { @{ Width = '180'; Height = '24'; Minimum = '0'; Maximum = '100'; Value = '50' }; break }
+        'DatePicker' { @{ Width = '160'; Height = '30' }; break }
+        'Calendar' { @{ Width = '240'; Height = '180' }; break }
         'Image' { @{ Width = '160'; Height = '120'; Stretch = 'Uniform' }; break }
-        'Border' { @{ Width = '180'; Height = '120'; BorderBrush = 'Gray'; BorderThickness = '1' }; break }
-        'Canvas' { @{ Width = '240'; Height = '160'; Background = 'Transparent' }; break }
-        'Grid' { @{ Width = '240'; Height = '160'; Background = 'Transparent' }; break }
+        'Border' { @{ Width = '200'; Height = '130'; BorderBrush = 'Gray'; BorderThickness = '1'; Padding = '6' }; break }
+        'GroupBox' { @{ Header = 'Group'; Width = '220'; Height = '150' }; break }
+        'ScrollViewer' { @{ Width = '220'; Height = '150'; VerticalScrollBarVisibility = 'Auto' }; break }
+        'Viewbox' { @{ Width = '220'; Height = '150' }; break }
+        'Canvas' { @{ Width = '260'; Height = '180'; Background = 'Transparent' }; break }
+        'Grid' { @{ Width = '260'; Height = '180'; Background = 'Transparent' }; break }
         'StackPanel' { @{ Width = '220'; Height = '160' }; break }
         'WrapPanel' { @{ Width = '220'; Height = '160' }; break }
         'DockPanel' { @{ Width = '220'; Height = '160' }; break }
+        'UniformGrid' { @{ Width = '220'; Height = '160'; Rows = '2'; Columns = '2' }; break }
+        'TabControl' { @{ Width = '300'; Height = '200' }; break }
         'Rectangle' { @{ Width = '120'; Height = '80'; Stroke = 'Gray'; Fill = 'Transparent' }; break }
         'Ellipse' { @{ Width = '120'; Height = '80'; Stroke = 'Gray'; Fill = 'Transparent' }; break }
         'Line' { @{ X1 = '0'; Y1 = '0'; X2 = '120'; Y2 = '60'; Stroke = 'Black'; StrokeThickness = '1' }; break }
@@ -82,16 +90,24 @@ function Test-XamlSingleChildContainerNode {
     return $Node.LocalName -in @('Border', 'GroupBox', 'ScrollViewer', 'Viewbox')
 }
 
-function Test-XamlNodeHasDirectElementChild {
+function Test-XamlNodeHasDirectContentChild {
     param(
         [Parameter(Mandatory)]
         [System.Xml.XmlElement]$Node
     )
 
     foreach ($child in $Node.ChildNodes) {
-        if ($child -is [System.Xml.XmlElement]) {
-            return $true
+        if ($child -isnot [System.Xml.XmlElement]) {
+            continue
         }
+
+        # Property elements such as Border.Background or Grid.RowDefinitions
+        # configure the parent and are not the parent's content child.
+        if ($child.LocalName.Contains('.')) {
+            continue
+        }
+
+        return $true
     }
 
     return $false
@@ -107,7 +123,7 @@ function Get-PrimaryDesignContainerNode {
         if (
             $null -ne $selectedNode -and
             (Test-XamlSingleChildContainerNode -Node $selectedNode) -and
-            -not (Test-XamlNodeHasDirectElementChild -Node $selectedNode)
+            -not (Test-XamlNodeHasDirectContentChild -Node $selectedNode)
         ) {
             return $selectedNode
         }
@@ -130,6 +146,12 @@ function Get-PrimaryDesignContainerNode {
         if (Test-XamlLayoutContainerNode -Node $child) {
             return $child
         }
+        if (
+            (Test-XamlSingleChildContainerNode -Node $child) -and
+            -not (Test-XamlNodeHasDirectContentChild -Node $child)
+        ) {
+            return $child
+        }
     }
     return $null
 }
@@ -146,12 +168,15 @@ function Add-ToolboxElementToDocument {
 
     $container = Get-PrimaryDesignContainerNode
     if ($null -eq $container) {
-        Set-DesignerStatus -Message 'No supported target container was found. Select an empty Border/GroupBox/ScrollViewer/Viewbox or a Canvas/Grid/StackPanel-style panel.'
+        Set-DesignerStatus -Message 'No supported target container was found. Select a panel or an empty Border/GroupBox/ScrollViewer/Viewbox.'
         return
     }
 
-    if ((Test-XamlSingleChildContainerNode -Node $container) -and (Test-XamlNodeHasDirectElementChild -Node $container)) {
-        Set-DesignerStatus -Message "$($container.LocalName) already contains a child. Select another container or edit XAML source."
+    if (
+        (Test-XamlSingleChildContainerNode -Node $container) -and
+        (Test-XamlNodeHasDirectContentChild -Node $container)
+    ) {
+        Set-DesignerStatus -Message "$($container.LocalName) already has a content child. Select another container or edit XAML source."
         return
     }
 
@@ -165,9 +190,95 @@ function Add-ToolboxElementToDocument {
     Refresh-XamlTextFromDocument
     Sync-CodeEditor
     [void](Refresh-Preview -KeepSelection)
+
     $targetName = Get-ElementNameFromNode -Node $container
-    if ([string]::IsNullOrWhiteSpace($targetName)) { $targetName = $container.LocalName }
+    if ([string]::IsNullOrWhiteSpace($targetName)) {
+        $targetName = $container.LocalName
+    }
     Set-DesignerStatus -Message "Added $($Type.Name) as $name to $targetName."
+}
+
+function Add-SelectedToolboxItem {
+    $item = $script:State.Ui.ToolboxList.SelectedItem
+    if ($null -eq $item) {
+        Set-DesignerStatus -Message 'Select a toolbox control first.'
+        return
+    }
+
+    $left = 20.0
+    $top = 20.0
+    $container = Get-PrimaryDesignContainerNode
+    if ($null -ne $container -and $container.LocalName -eq 'Canvas') {
+        $contentCount = 0
+        foreach ($child in $container.ChildNodes) {
+            if ($child -is [System.Xml.XmlElement] -and -not $child.LocalName.Contains('.')) {
+                $contentCount++
+            }
+        }
+        $offset = ($contentCount % 8) * 20
+        $left += $offset
+        $top += $offset
+    }
+
+    Add-ToolboxElementToDocument -Type $item.Type -Left $left -Top $top
+}
+
+function New-UniqueCloneName {
+    param(
+        [Parameter(Mandatory)]
+        [string]$BaseName,
+
+        [Parameter(Mandatory)]
+        [System.Collections.Generic.HashSet[string]]$ReservedNames
+    )
+
+    $safeBase = $BaseName -replace '[^A-Za-z0-9_]', ''
+    if ([string]::IsNullOrWhiteSpace($safeBase)) {
+        $safeBase = 'Control'
+    }
+
+    $index = 1
+    do {
+        $candidate = "$safeBase$index"
+        $index++
+    } while ($ReservedNames.Contains($candidate))
+
+    [void]$ReservedNames.Add($candidate)
+    return $candidate
+}
+
+function Update-ClonedNameReferences {
+    param(
+        [Parameter(Mandatory)]
+        [System.Xml.XmlElement]$Root,
+
+        [Parameter(Mandatory)]
+        [hashtable]$RenameMap
+    )
+
+    foreach ($node in @($Root) + @($Root.SelectNodes('.//*'))) {
+        if ($node -isnot [System.Xml.XmlElement]) {
+            continue
+        }
+
+        foreach ($attribute in @($node.Attributes)) {
+            $updated = $attribute.Value
+            foreach ($oldName in $RenameMap.Keys) {
+                $newName = [string]$RenameMap[$oldName]
+                if ($updated -eq $oldName -and $attribute.LocalName -in @('TargetName','SourceName','Storyboard.TargetName')) {
+                    $updated = $newName
+                }
+                $updated = [regex]::Replace(
+                    $updated,
+                    '(?i)(ElementName\s*=\s*)' + [regex]::Escape($oldName) + '(?=\s*[,}])',
+                    '$1' + $newName
+                )
+            }
+            if ($updated -cne $attribute.Value) {
+                $attribute.Value = $updated
+            }
+        }
+    }
 }
 
 function Copy-XamlElementNode {
@@ -177,58 +288,104 @@ function Copy-XamlElementNode {
     )
 
     $copy = [System.Xml.XmlElement]$Source.CloneNode($true)
-    $newName = New-UniqueControlName -BaseName $Source.LocalName
-    Set-ElementNameOnNode -Node $copy -Name $newName
+    $reservedNames = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+    foreach ($item in Get-AllNamedXamlElements) {
+        [void]$reservedNames.Add($item.Name)
+    }
+
+    $renameMap = @{}
+    $newRootName = $null
+    foreach ($node in @($copy) + @($copy.SelectNodes('.//*'))) {
+        if ($node -isnot [System.Xml.XmlElement]) {
+            continue
+        }
+
+        $oldName = Get-ElementNameFromNode -Node $node
+        if ([string]::IsNullOrWhiteSpace($oldName)) {
+            continue
+        }
+
+        $newName = New-UniqueCloneName -BaseName $node.LocalName -ReservedNames $reservedNames
+        Set-ElementNameOnNode -Node $node -Name $newName
+        $renameMap[$oldName] = $newName
+
+        if ($node -eq $copy) {
+            $newRootName = $newName
+        }
+    }
+
+    Update-ClonedNameReferences -Root $copy -RenameMap $renameMap
 
     foreach ($attributeName in @('Canvas.Left', 'Canvas.Top')) {
         if ($copy.HasAttribute($attributeName)) {
             $value = 0.0
-            if ([double]::TryParse($copy.GetAttribute($attributeName), [System.Globalization.NumberStyles]::Float, [System.Globalization.CultureInfo]::InvariantCulture, [ref]$value)) {
-                $copy.SetAttribute($attributeName, ($value + 20).ToString([System.Globalization.CultureInfo]::InvariantCulture))
+            if ([double]::TryParse(
+                $copy.GetAttribute($attributeName),
+                [System.Globalization.NumberStyles]::Float,
+                [System.Globalization.CultureInfo]::InvariantCulture,
+                [ref]$value
+            )) {
+                $copy.SetAttribute(
+                    $attributeName,
+                    ($value + 20).ToString([System.Globalization.CultureInfo]::InvariantCulture)
+                )
             }
         }
     }
 
     [void]$Source.ParentNode.AppendChild($copy)
-    return $newName
+    return $newRootName
 }
 
 function Delete-SelectedElement {
     if ([string]::IsNullOrWhiteSpace($script:State.SelectedElementName)) {
         return
     }
+
     $node = Get-XamlElementByName -Name $script:State.SelectedElementName
     if ($null -eq $node -or $node -eq $script:State.XamlDocument.DocumentElement) {
         return
     }
+
     Push-XamlUndoSnapshot
     $deletedName = $script:State.SelectedElementName
     [void]$node.ParentNode.RemoveChild($node)
+
+    if (Get-Command Remove-GeneratedEventsForControl -ErrorAction SilentlyContinue) {
+        $script:State.Ui.CodeEditor.Text = Remove-GeneratedEventsForControl -Code $script:State.Ui.CodeEditor.Text -ControlName $deletedName
+    }
+
     $script:State.SelectedElementName = $null
     $script:State.SelectedRuntimeElement = $null
     Refresh-XamlTextFromDocument
     Sync-CodeEditor
     [void](Refresh-Preview)
-    Set-DesignerStatus -Message "Deleted $deletedName. Existing user-written event code is preserved for manual cleanup."
+    Set-DesignerStatus -Message "Deleted $deletedName. Designer-generated event blocks for that control were removed; code outside generated blocks was preserved."
 }
 
 function Duplicate-SelectedElement {
     if ([string]::IsNullOrWhiteSpace($script:State.SelectedElementName)) {
         return
     }
+
     $node = Get-XamlElementByName -Name $script:State.SelectedElementName
     if ($null -eq $node -or $node -eq $script:State.XamlDocument.DocumentElement) {
         return
     }
+
     Push-XamlUndoSnapshot
     $newName = Copy-XamlElementNode -Source $node
+    if ([string]::IsNullOrWhiteSpace($newName)) {
+        Set-DesignerStatus -Message 'The selected XAML element has no x:Name and could not be selected after duplication.'
+        return
+    }
+
     $script:State.SelectedElementName = $newName
     Refresh-XamlTextFromDocument
     Sync-CodeEditor
     [void](Refresh-Preview -KeepSelection)
-    Set-DesignerStatus -Message "Duplicated control as $newName."
+    Set-DesignerStatus -Message "Duplicated the control subtree as $newName. Named child controls were also renamed to keep x:Name values unique."
 }
-
 
 function Move-SelectedCanvasElementBy {
     param(
