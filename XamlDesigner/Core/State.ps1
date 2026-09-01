@@ -17,6 +17,7 @@ $script:State = [ordered]@{
     SavedCodeText = $null
     SelectedElementName = $null
     SelectedRuntimeElement = $null
+    PreviewWindow = $null
     ToolboxItems = @()
     ToolboxDragOrigin = $null
     DesignerDragActive = $false
