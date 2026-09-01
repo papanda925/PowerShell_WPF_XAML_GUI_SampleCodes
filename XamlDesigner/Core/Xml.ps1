@@ -7,7 +7,7 @@ function ConvertTo-FormattedXml {
     $settings = [System.Xml.XmlWriterSettings]::new()
     $settings.Indent = $true
     $settings.IndentChars = '    '
-    $settings.NewLineChars = "`r`n"
+    $settings.NewLineChars = [Environment]::NewLine
     $settings.NewLineHandling = [System.Xml.NewLineHandling]::Replace
     $settings.OmitXmlDeclaration = $true
 
@@ -20,7 +20,7 @@ function ConvertTo-FormattedXml {
         $writer.Close()
     }
 
-    return $builder.ToString().Trim() + "`r`n"
+    return $builder.ToString().Trim() + [Environment]::NewLine
 }
 
 function New-XmlDocumentFromText {
@@ -29,9 +29,6 @@ function New-XmlDocumentFromText {
         [string]$Text
     )
 
-    # Treat XAML as data. DTD processing and external resource resolution are
-    # disabled explicitly so opening a document never performs XML network/file
-    # resolution behind the user's back.
     $settings = [System.Xml.XmlReaderSettings]::new()
     $settings.DtdProcessing = [System.Xml.DtdProcessing]::Prohibit
     $settings.XmlResolver = $null
@@ -53,12 +50,18 @@ function New-XmlDocumentFromText {
 
 function Get-BlankXamlText {
     $path = Join-Path $script:State.BaseDirectory 'Templates\BlankWindow.xaml'
-    return Get-Content -LiteralPath $path -Raw
+    if (Get-Command Read-DesignerTextFile -ErrorAction SilentlyContinue) {
+        return Read-DesignerTextFile -Path $path
+    }
+    return [System.IO.File]::ReadAllText($path)
 }
 
 function Get-BlankCodeText {
     $path = Join-Path $script:State.BaseDirectory 'Templates\BlankWindow.ps1'
-    return Get-Content -LiteralPath $path -Raw
+    if (Get-Command Read-DesignerTextFile -ErrorAction SilentlyContinue) {
+        return Read-DesignerTextFile -Path $path
+    }
+    return [System.IO.File]::ReadAllText($path)
 }
 
 function Get-ElementNameFromNode {
@@ -110,6 +113,37 @@ function Get-XamlElementByName {
     return $null
 }
 
+function Test-XamlNodeInSeparateNameScope {
+    param(
+        [Parameter(Mandatory)]
+        [System.Xml.XmlElement]$Node
+    )
+
+    $separateScopeNames = @(
+        'ControlTemplate',
+        'DataTemplate',
+        'ItemsPanelTemplate',
+        'HierarchicalDataTemplate',
+        'Style',
+        'Setter',
+        'Trigger',
+        'MultiTrigger',
+        'DataTrigger',
+        'MultiDataTrigger',
+        'ResourceDictionary'
+    )
+
+    $current = $Node.ParentNode
+    while ($current -is [System.Xml.XmlElement]) {
+        if ($current.LocalName -in $separateScopeNames -or $current.LocalName -like '*.Resources') {
+            return $true
+        }
+        $current = $current.ParentNode
+    }
+
+    return $false
+}
+
 function Get-AllNamedXamlElements {
     $result = [System.Collections.Generic.List[object]]::new()
     if ($null -eq $script:State.XamlDocument) {
@@ -118,12 +152,14 @@ function Get-AllNamedXamlElements {
 
     $root = $script:State.XamlDocument.DocumentElement
     foreach ($node in $script:State.XamlDocument.SelectNodes('//*')) {
-        if ($node -isnot [System.Xml.XmlElement]) {
+        if ($node -isnot [System.Xml.XmlElement] -or $node -eq $root) {
             continue
         }
-        if ($node -eq $root) {
+
+        if (Test-XamlNodeInSeparateNameScope -Node $node) {
             continue
         }
+
         $name = Get-ElementNameFromNode -Node $node
         if (-not [string]::IsNullOrWhiteSpace($name)) {
             $result.Add([pscustomobject]@{
@@ -133,6 +169,7 @@ function Get-AllNamedXamlElements {
             })
         }
     }
+
     return $result
 }
 
@@ -169,6 +206,81 @@ function Get-WpfTypeByElementName {
     return $null
 }
 
+function Test-XamlPreviewSafety {
+    param(
+        [Parameter(Mandatory)]
+        [System.Xml.XmlDocument]$Document
+    )
+
+    $blockedElements = @(
+        'ObjectDataProvider',
+        'XmlDataProvider'
+    )
+
+    foreach ($node in $Document.SelectNodes('//*')) {
+        if ($node -isnot [System.Xml.XmlElement]) {
+            continue
+        }
+
+        if ($node.NamespaceURI -eq $script:XamlNs -and $node.LocalName -in @('Code','FactoryMethod','Arguments')) {
+            throw "Safe preview blocked x:$($node.LocalName). Loose XAML preview must not execute embedded code or factory-method construction."
+        }
+
+        if (
+            -not [string]::IsNullOrWhiteSpace($node.NamespaceURI) -and
+            $node.NamespaceURI -ne $script:PresentationNs -and
+            $node.NamespaceURI -ne $script:XamlNs
+        ) {
+            throw "Safe preview blocked element '$($node.Name)' from non-standard namespace '$($node.NamespaceURI)'. Custom CLR controls are not loaded automatically."
+        }
+
+        if ($node.LocalName -in $blockedElements) {
+            throw "Safe preview blocked '$($node.LocalName)' because it can load data or invoke methods during XAML object construction."
+        }
+
+        if ($node.LocalName -eq 'ResourceDictionary' -and $node.HasAttribute('Source')) {
+            throw 'Safe preview blocked ResourceDictionary Source because external XAML dictionaries can load files or network resources. Inline the resources for preview.'
+        }
+
+        foreach ($attribute in @($node.Attributes)) {
+            if ($attribute.Prefix -eq 'xmlns' -or $attribute.Name -eq 'xmlns') {
+                continue
+            }
+
+            if (
+                -not [string]::IsNullOrWhiteSpace($attribute.NamespaceURI) -and
+                $attribute.NamespaceURI -notin @(
+                    $script:XamlNs,
+                    $script:McNs,
+                    $script:DesignNs,
+                    $script:PresentationNs,
+                    'http://www.w3.org/XML/1998/namespace'
+                )
+            ) {
+                throw "Safe preview blocked attribute '$($attribute.Name)' from namespace '$($attribute.NamespaceURI)'."
+            }
+
+            if ($attribute.NamespaceURI -eq $script:XamlNs -and $attribute.LocalName -in @('FactoryMethod','Arguments')) {
+                throw "Safe preview blocked x:$($attribute.LocalName)."
+            }
+
+            $staticMatch = [regex]::Match(
+                $attribute.Value,
+                '\{x:(?:Static|Type)\s+(?<Prefix>[A-Za-z_][A-Za-z0-9_.-]*):'
+            )
+            if ($staticMatch.Success) {
+                $prefix = $staticMatch.Groups['Prefix'].Value
+                $resolvedNamespace = $node.GetNamespaceOfPrefix($prefix)
+                if ($resolvedNamespace -like 'clr-namespace:*') {
+                    throw "Safe preview blocked x:Static/x:Type reference to custom CLR namespace prefix '$prefix'."
+                }
+            }
+        }
+    }
+
+    return $true
+}
+
 function Remove-PowerShellUnsupportedXamlAttributes {
     param(
         [Parameter(Mandatory)]
@@ -180,8 +292,6 @@ function Remove-PowerShellUnsupportedXamlAttributes {
         return
     }
 
-    # x:Class and mc:Ignorable are design/build-time concepts. PowerShell's
-    # standalone XamlReader does not require them.
     $root.RemoveAttribute('Class', $script:XamlNs)
     $root.RemoveAttribute('Ignorable', $script:McNs)
 
@@ -190,10 +300,18 @@ function Remove-PowerShellUnsupportedXamlAttributes {
             continue
         }
 
-        # Remove d:* design-time attributes only from the preview clone.
         $attributesToRemove = [System.Collections.Generic.List[System.Xml.XmlAttribute]]::new()
         foreach ($attribute in @($node.Attributes)) {
             if ($attribute.NamespaceURI -eq $script:DesignNs) {
+                $attributesToRemove.Add($attribute)
+                continue
+            }
+
+            if (
+                $attribute.LocalName -in @('Source','UriSource','NavigateUri') -and
+                $attribute.Value -match '^(?i)(https?|ftp|file):|^(\\\\|//)'
+            ) {
+                # Avoid automatic network/file navigation while merely previewing XAML.
                 $attributesToRemove.Add($attribute)
             }
         }
@@ -201,22 +319,25 @@ function Remove-PowerShellUnsupportedXamlAttributes {
             [void]$node.Attributes.Remove($attribute)
         }
 
-        # Visual Studio can emit Click="Handler" style attributes. Those
-        # handlers cannot be resolved by a standalone PowerShell XamlReader,
-        # because PowerShell wires events from the .ps1 code-behind instead.
         $type = Get-WpfTypeByElementName -ElementName $node.LocalName
         if ($null -eq $type) {
             continue
         }
 
-        $eventNames = @($type.GetEvents([System.Reflection.BindingFlags]'Public,Instance') | ForEach-Object Name)
+        $eventNames = @(
+            $type.GetEvents([System.Reflection.BindingFlags]'Public,Instance') |
+            ForEach-Object Name
+        )
         if ($eventNames.Count -eq 0) {
             continue
         }
 
         $eventAttributes = [System.Collections.Generic.List[System.Xml.XmlAttribute]]::new()
         foreach ($attribute in @($node.Attributes)) {
-            if ([string]::IsNullOrWhiteSpace($attribute.NamespaceURI) -and $eventNames -contains $attribute.LocalName) {
+            if (
+                [string]::IsNullOrWhiteSpace($attribute.NamespaceURI) -and
+                $eventNames -contains $attribute.LocalName
+            ) {
                 $eventAttributes.Add($attribute)
             }
         }
