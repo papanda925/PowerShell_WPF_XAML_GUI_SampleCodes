@@ -25,7 +25,7 @@ $script:State = [ordered]@{
     DesignerDragStartLeft = 0.0
     DesignerDragStartTop = 0.0
     DesignerDragCanvas = $null
-    UndoStack = [System.Collections.Generic.Stack[string]]::new()
+    UndoStack = [System.Collections.Generic.Stack[object]]::new()
     RedoStack = [System.Collections.Generic.Stack[string]]::new()
     IsRestoringHistory = $false
 }
