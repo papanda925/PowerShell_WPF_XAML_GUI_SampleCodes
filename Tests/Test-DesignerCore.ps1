@@ -151,10 +151,10 @@ $archived = Archive-GeneratedEventsForControl -Code $sampleCode -ControlName 'Bu
 if ($archived -notmatch 'XamlDesigner:ArchivedEvent') {
     throw 'Deleted-control event block was not archived.'
 }
-if ($archived -match '(?m)^\\s*\\$\\{Button1\\}\\.Add_Click\\(') {
+if ($archived -match '(?m)^\s*\$\{Button1\}\.Add_Click\(') {
     throw 'Archived event handler is still executable.'
 }
-if ($archived -notmatch 'param\\(\\$sender, \\$e\\)') {
+if ($archived -notmatch 'param\(\$sender, \$e\)') {
     throw 'Archived event handler body was not preserved as comments.'
 }
 if ($archived -notmatch 'Write-Host "user code"') {
