@@ -191,3 +191,35 @@ function Duplicate-SelectedElement {
     [void](Refresh-Preview -KeepSelection)
     Set-DesignerStatus -Message "Duplicated control as $newName."
 }
+
+
+function Move-SelectedCanvasElementBy {
+    param(
+        [double]$DeltaX,
+        [double]$DeltaY
+    )
+
+    $element = $script:State.SelectedRuntimeElement
+    if ($element -isnot [System.Windows.FrameworkElement] -or $element.Parent -isnot [System.Windows.Controls.Canvas]) {
+        return $false
+    }
+
+    $left = [System.Windows.Controls.Canvas]::GetLeft($element)
+    $top = [System.Windows.Controls.Canvas]::GetTop($element)
+    if ([double]::IsNaN($left)) { $left = 0 }
+    if ([double]::IsNaN($top)) { $top = 0 }
+
+    $newLeft = [math]::Max(0, $left + $DeltaX)
+    $newTop = [math]::Max(0, $top + $DeltaY)
+    if ([math]::Abs($newLeft - $left) -lt 0.01 -and [math]::Abs($newTop - $top) -lt 0.01) {
+        return $false
+    }
+
+    Push-XamlUndoSnapshot
+    [System.Windows.Controls.Canvas]::SetLeft($element, $newLeft)
+    [System.Windows.Controls.Canvas]::SetTop($element, $newTop)
+    Update-SelectedCanvasPosition -Left $newLeft -Top $newTop
+    Refresh-PropertyGrid
+    Set-DesignerStatus -Message "Moved $($script:State.SelectedElementName) to $newLeft, $newTop."
+    return $true
+}
