@@ -112,13 +112,21 @@ function Register-UiEvents {
             return
         }
 
-        $canvas = Find-VisualElementByName -Root $ui.PreviewHost -Name 'DesignCanvas'
-        if ($canvas -is [System.Windows.Controls.Canvas]) {
-            $point = $e.GetPosition($canvas)
+        $dropSurface = $null
+        if ($script:State.SelectedRuntimeElement -is [System.Windows.Controls.Canvas]) {
+            $dropSurface = $script:State.SelectedRuntimeElement
+        }
+        if ($null -eq $dropSurface) {
+            $dropSurface = Find-VisualElementByName -Root $ui.PreviewHost -Name 'DesignCanvas'
+        }
+
+        if ($dropSurface -is [System.Windows.Controls.Canvas]) {
+            $point = $e.GetPosition($dropSurface)
             $left = $point.X
             $top = $point.Y
         }
         else {
+            # Grid/StackPanel/etc. control layout themselves; coordinates are ignored.
             $left = 20
             $top = 20
         }

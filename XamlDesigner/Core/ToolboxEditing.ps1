@@ -64,7 +64,23 @@ function Set-DefaultNewElementAttributes {
     return $name
 }
 
+function Test-XamlLayoutContainerNode {
+    param(
+        [Parameter(Mandatory)]
+        [System.Xml.XmlElement]$Node
+    )
+
+    return $Node.LocalName -in @('Canvas', 'Grid', 'StackPanel', 'WrapPanel', 'DockPanel', 'UniformGrid')
+}
+
 function Get-PrimaryDesignContainerNode {
+    if (-not [string]::IsNullOrWhiteSpace($script:State.SelectedElementName)) {
+        $selectedNode = Get-XamlElementByName -Name $script:State.SelectedElementName
+        if ($null -ne $selectedNode -and (Test-XamlLayoutContainerNode -Node $selectedNode)) {
+            return $selectedNode
+        }
+    }
+
     $designCanvas = Get-XamlElementByName -Name 'DesignCanvas'
     if ($null -ne $designCanvas) {
         return $designCanvas
@@ -79,7 +95,7 @@ function Get-PrimaryDesignContainerNode {
         if ($child -isnot [System.Xml.XmlElement]) {
             continue
         }
-        if ($child.LocalName -in @('Canvas', 'Grid', 'StackPanel', 'WrapPanel', 'DockPanel', 'UniformGrid')) {
+        if (Test-XamlLayoutContainerNode -Node $child) {
             return $child
         }
     }
@@ -113,7 +129,9 @@ function Add-ToolboxElementToDocument {
     Refresh-XamlTextFromDocument
     Sync-CodeEditor
     [void](Refresh-Preview -KeepSelection)
-    Set-DesignerStatus -Message "Added $($Type.Name) as $name."
+    $targetName = Get-ElementNameFromNode -Node $container
+    if ([string]::IsNullOrWhiteSpace($targetName)) { $targetName = $container.LocalName }
+    Set-DesignerStatus -Message "Added $($Type.Name) as $name to $targetName."
 }
 
 function Copy-XamlElementNode {
