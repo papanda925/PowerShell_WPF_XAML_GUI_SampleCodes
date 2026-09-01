@@ -147,11 +147,17 @@ ${Button1}.Add_Click({
 
 Write-Host "user code"
 '@
-$cleaned = Remove-GeneratedEventsForControl -Code $sampleCode -ControlName 'Button1'
-if ($cleaned -match 'Button1.*Add_Click') {
-    throw 'Generated event block was not removed.'
+$archived = Archive-GeneratedEventsForControl -Code $sampleCode -ControlName 'Button1'
+if ($archived -notmatch 'XamlDesigner:ArchivedEvent') {
+    throw 'Deleted-control event block was not archived.'
 }
-if ($cleaned -notmatch 'Write-Host "user code"') {
+if ($archived -match '(?m)^\\s*\\$\\{Button1\\}\\.Add_Click\\(') {
+    throw 'Archived event handler is still executable.'
+}
+if ($archived -notmatch 'param\\(\\$sender, \\$e\\)') {
+    throw 'Archived event handler body was not preserved as comments.'
+}
+if ($archived -notmatch 'Write-Host "user code"') {
     throw 'User code outside generated blocks was removed unexpectedly.'
 }
 
@@ -192,4 +198,4 @@ if ($snapshot.CodeText -ne 'Write-Host old' -or $snapshot.SelectionName -ne 'But
     throw 'Designer history snapshot did not retain code/selection state.'
 }
 
-Write-Host 'Safe preview, NameScope, duplication, event cleanup, encoding, and history behavior checks passed.'
+Write-Host 'Safe preview, NameScope, duplication, event archiving, encoding, and history behavior checks passed.'
