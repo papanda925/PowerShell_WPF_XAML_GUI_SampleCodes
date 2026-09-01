@@ -7,7 +7,9 @@ $ErrorActionPreference = 'Stop'
 $repositoryRoot = Split-Path -Parent $PSScriptRoot
 $errorsFound = [System.Collections.Generic.List[string]]::new()
 
-Get-ChildItem -LiteralPath $repositoryRoot -Recurse -File -Include *.ps1,*.psm1 | ForEach-Object {
+Get-ChildItem -LiteralPath $repositoryRoot -Recurse -File |
+Where-Object { $_.Extension -in @('.ps1', '.psm1') } |
+ForEach-Object {
     $tokens = $null
     $parseErrors = $null
     [void][System.Management.Automation.Language.Parser]::ParseFile($_.FullName, [ref]$tokens, [ref]$parseErrors)
@@ -16,7 +18,9 @@ Get-ChildItem -LiteralPath $repositoryRoot -Recurse -File -Include *.ps1,*.psm1 
     }
 }
 
-Get-ChildItem -LiteralPath $repositoryRoot -Recurse -File -Include *.xaml | ForEach-Object {
+Get-ChildItem -LiteralPath $repositoryRoot -Recurse -File |
+Where-Object { $_.Extension -eq '.xaml' } |
+ForEach-Object {
     $xamlFile = $_
     try {
         $settings = [System.Xml.XmlReaderSettings]::new()
