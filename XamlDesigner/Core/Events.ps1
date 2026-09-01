@@ -4,7 +4,9 @@ function Generate-EventHandlerForName {
         [string]$EventName
     )
 
-    if ([string]::IsNullOrWhiteSpace($script:State.SelectedElementName)) {
+    if ([string]::IsNullOrWhiteSpace($script:State.SelectedElementName) -or
+        $script:State.SelectedRuntimeElement -isnot [System.Windows.FrameworkElement]) {
+        Set-DesignerStatus -Message 'Select a named control before generating an event handler.'
         return
     }
 
@@ -18,23 +20,25 @@ function Generate-EventHandlerForName {
     Sync-CodeEditor
     $code = $script:State.Ui.CodeEditor.Text
 
-    $pattern = [regex]::Escape("`$$name.Add_$EventName(")
-    if ([regex]::IsMatch($code, $pattern)) {
+    $marker = '# <XamlDesigner:Event Control="' + $name + '" Name="' + $EventName + '">'
+    $legacyPattern = [regex]::Escape('$' + $name + '.Add_' + $EventName + '(')
+    $variableReference = '$' + '{' + $name + '}'
+    $bracedPattern = [regex]::Escape($variableReference + '.Add_' + $EventName + '(')
+    if ($code.Contains($marker) -or
+        [regex]::IsMatch($code, $legacyPattern) -or
+        [regex]::IsMatch($code, $bracedPattern)) {
         Set-DesignerStatus -Message "An $EventName handler for $name already exists."
         $script:State.Ui.MainTabs.SelectedIndex = 2
         return
     }
 
-    $block = @"
+    $block = "`r`n`r`n$marker`r`n" +
+        $variableReference + ".Add_$EventName({`r`n" +
+        "    param(`$sender, `$e)`r`n`r`n" +
+        "    # TODO: Add $EventName logic for $name.`r`n" +
+        "})`r`n# </XamlDesigner:Event>`r`n"
 
-# $name.$EventName
-`$$name.Add_$EventName({
-    param(`$sender, `$e)
-
-    # TODO: Add $EventName logic for $name.
-})
-"@
-    $script:State.Ui.CodeEditor.Text = $code.TrimEnd() + $block + "`r`n"
+    $script:State.Ui.CodeEditor.Text = $code.TrimEnd() + $block
     $script:State.Ui.MainTabs.SelectedIndex = 2
     Set-DesignerStatus -Message "Generated PowerShell event handler: $name.$EventName"
 }

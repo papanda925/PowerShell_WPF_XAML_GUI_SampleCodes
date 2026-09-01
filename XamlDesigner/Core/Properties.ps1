@@ -149,6 +149,9 @@ function Apply-SelectedProperty {
                 throw "A control named '$value' already exists."
             }
             Set-ElementNameOnNode -Node $node -Name $value
+            if ($value -ne $oldName) {
+                $script:State.Ui.CodeEditor.Text = Rename-GeneratedEventControlReference -Code $script:State.Ui.CodeEditor.Text -OldName $oldName -NewName $value
+            }
             $script:State.SelectedElementName = $value
         }
         elseif ([string]::IsNullOrWhiteSpace($value)) {
