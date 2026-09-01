@@ -56,7 +56,9 @@ if (Test-Path -LiteralPath $templateCodePath) {
         '# <XamlDesigner:XamlFile>',
         '# </XamlDesigner:XamlFile>',
         '# <XamlDesigner:ControlReferences>',
-        '# </XamlDesigner:ControlReferences>'
+        '# </XamlDesigner:ControlReferences>',
+        '# <XamlDesigner:Events>',
+        '# </XamlDesigner:Events>'
     )) {
         if (-not $templateCode.Contains($marker)) {
             $errorsFound.Add("Generated-code marker is missing from BlankWindow.ps1: $marker")
