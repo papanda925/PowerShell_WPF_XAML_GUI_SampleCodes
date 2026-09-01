@@ -254,6 +254,7 @@ function Test-XamlPreviewSafety {
                     $script:McNs,
                     $script:DesignNs,
                     $script:PresentationNs,
+                    $script:PresentationOptionsNs,
                     'http://www.w3.org/XML/1998/namespace'
                 )
             ) {
