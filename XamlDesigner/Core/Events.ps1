@@ -14,6 +14,49 @@ function Remove-GeneratedEventsForControl {
     return [regex]::Replace($Code, $pattern, '')
 }
 
+function Archive-GeneratedEventsForControl {
+    param(
+        [Parameter(Mandatory)]
+        [string]$Code,
+
+        [Parameter(Mandatory)]
+        [string]$ControlName
+    )
+
+    $pattern = '(?ms)^# <XamlDesigner:Event Control="' +
+        [regex]::Escape($ControlName) +
+        '" Name="(?<Event>[^"]+)">\r?\n(?<Body>.*?)^# </XamlDesigner:Event>\r?\n?'
+
+    return [regex]::Replace(
+        $Code,
+        $pattern,
+        [System.Text.RegularExpressions.MatchEvaluator]{
+            param($match)
+
+            $eventName = $match.Groups['Event'].Value
+            $bodyLines = $match.Groups['Body'].Value -split '\r?\n'
+            $commentedBody = @(
+                $bodyLines | ForEach-Object {
+                    if ([string]::IsNullOrEmpty($_)) {
+                        '#'
+                    }
+                    else {
+                        '# ' + $_
+                    }
+                }
+            ) -join [Environment]::NewLine
+
+            return (
+                '# <XamlDesigner:ArchivedEvent FormerControl="' + $ControlName +
+                '" Name="' + $eventName + '">' + [Environment]::NewLine +
+                '# This handler was disabled automatically because its control was deleted.' + [Environment]::NewLine +
+                $commentedBody + [Environment]::NewLine +
+                '# </XamlDesigner:ArchivedEvent>' + [Environment]::NewLine
+            )
+        }
+    )
+}
+
 function Generate-EventHandlerForName {
     param(
         [Parameter(Mandatory)]
@@ -43,9 +86,209 @@ function Generate-EventHandlerForName {
     $code = $script:State.Ui.CodeEditor.Text
 
     $marker = '# <XamlDesigner:Event Control="' + $name + '" Name="' + $EventName + '">'
-    $legacyPattern = [regex]::Escape('$' + $name + '.Add_' + $EventName + '(')
-    $variableReference = '$' + '{' + $name + '}'
-    $bracedPattern = [regex]::Escape($variableReference + '.Add_' + $EventName + '(')
+    $legacyPattern = '(?m)^\\s*' + [regex]::Escape('
+
+    if (
+        $code.Contains($marker) -or
+        [regex]::IsMatch($code, $legacyPattern) -or
+        [regex]::IsMatch($code, $bracedPattern)
+    ) {
+        Set-DesignerStatus -Message "An $EventName handler for $name already exists."
+        $script:State.Ui.MainTabs.SelectedIndex = 2
+        return
+    }
+
+    $eventsEnd = '# </XamlDesigner:Events>'
+    if (-not $code.Contains($eventsEnd)) {
+        Set-DesignerStatus -Message 'The generated event region is missing from the PowerShell code-behind.'
+        return
+    }
+
+    Push-XamlUndoSnapshot
+
+    $nl = [Environment]::NewLine
+    $block = $marker + $nl +
+        $variableReference + ".Add_$EventName({" + $nl +
+        '    param($sender, $e)' + $nl + $nl +
+        "    # TODO: Add $EventName logic for $name here." + $nl +
+        '})' + $nl +
+        '# </XamlDesigner:Event>' + $nl
+
+    $script:State.Ui.CodeEditor.Text = $code.Replace($eventsEnd, $block + $eventsEnd)
+    $script:State.Ui.MainTabs.SelectedIndex = 2
+    Set-DesignerStatus -Message "Generated $name.$EventName before ShowDialog. Add your logic inside the new block."
+}
+
+function Generate-SelectedEventHandler {
+    $selectedEvent = $script:State.Ui.EventGrid.SelectedItem
+    if ($null -eq $selectedEvent) {
+        Set-DesignerStatus -Message 'Select an event first.'
+        return
+    }
+
+    Generate-EventHandlerForName -EventName ([string]$selectedEvent.Name)
+}
+
+function Get-DefaultDesignerEventName {
+    param(
+        [Parameter(Mandatory)]
+        [System.Windows.FrameworkElement]$Element
+    )
+
+    $eventNames = @(
+        $Element.GetType().GetEvents([System.Reflection.BindingFlags]'Public,Instance') |
+        ForEach-Object Name
+    )
+
+    foreach ($candidate in @(
+        'Click',
+        'Checked',
+        'SelectionChanged',
+        'TextChanged',
+        'ValueChanged',
+        'SelectedDateChanged',
+        'MouseDoubleClick',
+        'Loaded'
+    )) {
+        if ($eventNames -contains $candidate) {
+            return $candidate
+        }
+    }
+
+    return $null
+}
+
+function Update-SelectedCanvasPosition {
+    param(
+        [Parameter(Mandatory)]
+        [double]$Left,
+
+        [Parameter(Mandatory)]
+        [double]$Top
+    )
+
+    if ([string]::IsNullOrWhiteSpace($script:State.SelectedElementName)) {
+        return
+    }
+
+    $node = Get-XamlElementByName -Name $script:State.SelectedElementName
+    if ($null -eq $node) {
+        return
+    }
+
+    $node.SetAttribute(
+        'Canvas.Left',
+        $Left.ToString([System.Globalization.CultureInfo]::InvariantCulture)
+    )
+    $node.SetAttribute(
+        'Canvas.Top',
+        $Top.ToString([System.Globalization.CultureInfo]::InvariantCulture)
+    )
+    Refresh-XamlTextFromDocument
+}
+ + $name + '.Add_' + $EventName + '(')
+    $variableReference = '
+
+    if (
+        $code.Contains($marker) -or
+        [regex]::IsMatch($code, $legacyPattern) -or
+        [regex]::IsMatch($code, $bracedPattern)
+    ) {
+        Set-DesignerStatus -Message "An $EventName handler for $name already exists."
+        $script:State.Ui.MainTabs.SelectedIndex = 2
+        return
+    }
+
+    $eventsEnd = '# </XamlDesigner:Events>'
+    if (-not $code.Contains($eventsEnd)) {
+        Set-DesignerStatus -Message 'The generated event region is missing from the PowerShell code-behind.'
+        return
+    }
+
+    Push-XamlUndoSnapshot
+
+    $nl = [Environment]::NewLine
+    $block = $marker + $nl +
+        $variableReference + ".Add_$EventName({" + $nl +
+        '    param($sender, $e)' + $nl + $nl +
+        "    # TODO: Add $EventName logic for $name here." + $nl +
+        '})' + $nl +
+        '# </XamlDesigner:Event>' + $nl
+
+    $script:State.Ui.CodeEditor.Text = $code.Replace($eventsEnd, $block + $eventsEnd)
+    $script:State.Ui.MainTabs.SelectedIndex = 2
+    Set-DesignerStatus -Message "Generated $name.$EventName before ShowDialog. Add your logic inside the new block."
+}
+
+function Generate-SelectedEventHandler {
+    $selectedEvent = $script:State.Ui.EventGrid.SelectedItem
+    if ($null -eq $selectedEvent) {
+        Set-DesignerStatus -Message 'Select an event first.'
+        return
+    }
+
+    Generate-EventHandlerForName -EventName ([string]$selectedEvent.Name)
+}
+
+function Get-DefaultDesignerEventName {
+    param(
+        [Parameter(Mandatory)]
+        [System.Windows.FrameworkElement]$Element
+    )
+
+    $eventNames = @(
+        $Element.GetType().GetEvents([System.Reflection.BindingFlags]'Public,Instance') |
+        ForEach-Object Name
+    )
+
+    foreach ($candidate in @(
+        'Click',
+        'Checked',
+        'SelectionChanged',
+        'TextChanged',
+        'ValueChanged',
+        'SelectedDateChanged',
+        'MouseDoubleClick',
+        'Loaded'
+    )) {
+        if ($eventNames -contains $candidate) {
+            return $candidate
+        }
+    }
+
+    return $null
+}
+
+function Update-SelectedCanvasPosition {
+    param(
+        [Parameter(Mandatory)]
+        [double]$Left,
+
+        [Parameter(Mandatory)]
+        [double]$Top
+    )
+
+    if ([string]::IsNullOrWhiteSpace($script:State.SelectedElementName)) {
+        return
+    }
+
+    $node = Get-XamlElementByName -Name $script:State.SelectedElementName
+    if ($null -eq $node) {
+        return
+    }
+
+    $node.SetAttribute(
+        'Canvas.Left',
+        $Left.ToString([System.Globalization.CultureInfo]::InvariantCulture)
+    )
+    $node.SetAttribute(
+        'Canvas.Top',
+        $Top.ToString([System.Globalization.CultureInfo]::InvariantCulture)
+    )
+    Refresh-XamlTextFromDocument
+}
+ + '{' + $name + '}'
+    $bracedPattern = '(?m)^\\s*' + [regex]::Escape($variableReference + '.Add_' + $EventName + '(')
 
     if (
         $code.Contains($marker) -or
