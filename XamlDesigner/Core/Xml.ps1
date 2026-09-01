@@ -196,8 +196,9 @@ function Get-WpfTypeByElementName {
         }
     }
 
+    $presentationAssembly = [System.Windows.Controls.Control].Assembly
     foreach ($namespace in @('System.Windows.Controls', 'System.Windows.Shapes', 'System.Windows.Documents')) {
-        $type = [Type]::GetType("$namespace.$ElementName, PresentationFramework", $false)
+        $type = $presentationAssembly.GetType("$namespace.$ElementName", $false, $false)
         if ($null -ne $type) {
             return $type
         }
