@@ -5,6 +5,7 @@ $script:XamlNs = 'http://schemas.microsoft.com/winfx/2006/xaml'
 $script:PresentationNs = 'http://schemas.microsoft.com/winfx/2006/xaml/presentation'
 $script:McNs = 'http://schemas.openxmlformats.org/markup-compatibility/2006'
 $script:DesignNs = 'http://schemas.microsoft.com/expression/blend/2008'
+$script:PresentationOptionsNs = 'http://schemas.microsoft.com/winfx/2006/xaml/presentation/options'
 
 $script:State = [ordered]@{
     Window = $null
@@ -25,7 +26,7 @@ $script:State = [ordered]@{
     DesignerDragStartLeft = 0.0
     DesignerDragStartTop = 0.0
     DesignerDragCanvas = $null
-    UndoStack = [System.Collections.Generic.Stack[string]]::new()
+    UndoStack = [System.Collections.Generic.Stack[object]]::new()
     RedoStack = [System.Collections.Generic.Stack[string]]::new()
     IsRestoringHistory = $false
 }

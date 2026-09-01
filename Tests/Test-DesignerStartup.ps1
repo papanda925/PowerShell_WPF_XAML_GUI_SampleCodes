@@ -22,7 +22,7 @@ $designerDirectory = Join-Path $repositoryRoot 'XamlDesigner'
 Import-Module (Join-Path $designerDirectory 'XamlDesigner.Core.psm1') -Force
 
 $designerXamlPath = Join-Path $designerDirectory 'XamlDesigner.xaml'
-[xml]$designerXaml = Get-Content -LiteralPath $designerXamlPath -Raw
+[xml]$designerXaml = [System.IO.File]::ReadAllText($designerXamlPath)
 $reader = [System.Xml.XmlNodeReader]::new($designerXaml)
 try {
     [System.Windows.Window]$window = [System.Windows.Markup.XamlReader]::Load($reader)
@@ -35,12 +35,12 @@ Initialize-XamlDesigner -Window $window -BaseDirectory $designerDirectory
 
 $requiredControls = @(
     'MenuNew','MenuOpen','MenuSave','MenuSaveAs','MenuExit',
-    'MenuUndo','MenuRedo','MenuDelete','MenuDuplicate','MenuValidate','MenuRefreshToolbox','MenuAbout',
-    'StatusText','DocumentText','ToolboxSearch','ToolboxCategory','ToolboxList','OutlineTree',
+    'MenuUndo','MenuRedo','MenuDelete','MenuDuplicate','MenuValidate','MenuRefreshToolbox','MenuGettingStarted','MenuAbout',
+    'StatusText','DocumentText','ToolboxSearch','ToolboxCategory','ToolboxList','ButtonAddToolbox','ToolboxHelpText','OutlineTree',
     'MainTabs','PreviewBorder','PreviewHost','CheckSnapToGrid',
     'ButtonDelete','ButtonDuplicate','ButtonApplyXaml','ButtonFormatXaml','ButtonValidateCode',
     'XamlEditor','CodeEditor','SelectedControlText','PropertyGrid',
-    'PropertyNameText','PropertyValueText','ButtonApplyProperty','EventGrid'
+    'PropertyNameText','PropertyValueText','PropertyHelpText','ButtonApplyProperty','EventGrid'
 )
 
 foreach ($name in $requiredControls) {

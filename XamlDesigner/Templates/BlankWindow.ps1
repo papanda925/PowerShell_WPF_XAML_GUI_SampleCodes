@@ -40,6 +40,7 @@ function ConvertTo-PowerShellRuntimeXaml {
         'System.Windows.Shapes',
         'System.Windows.Documents'
     )
+    $presentationAssembly = [System.Windows.Controls.Control].Assembly
 
     foreach ($node in $runtimeDocument.SelectNodes('//*')) {
         if ($node -isnot [System.Xml.XmlElement]) {
@@ -58,7 +59,7 @@ function ConvertTo-PowerShellRuntimeXaml {
         }
         else {
             foreach ($namespace in $typeNamespaces) {
-                $candidate = [Type]::GetType("$namespace.$($node.LocalName), PresentationFramework", $false)
+                $candidate = $presentationAssembly.GetType("$namespace.$($node.LocalName)", $false, $false)
                 if ($null -ne $candidate) {
                     $wpfType = $candidate
                     break

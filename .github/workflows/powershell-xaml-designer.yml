@@ -9,22 +9,36 @@ jobs:
   validate:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Parse PowerShell and XAML
-        shell: pwsh
-        run: .\Tests\Test-Repository.ps1
-      - name: Verify WPF assemblies can load
-        shell: pwsh
-        run: |
-          Add-Type -AssemblyName WindowsBase
-          Add-Type -AssemblyName PresentationCore
-          Add-Type -AssemblyName PresentationFramework
-          [System.Windows.Window] | Out-String | Write-Host
+      - uses: actions/checkout@v5
 
-      - name: Test generated PowerShell code
-        shell: pwsh
-        run: .\Tests\Test-CodeGeneration.ps1
-
-      - name: Smoke test designer startup in STA
+      - name: Parse repository with PowerShell 7
         shell: cmd
-        run: powershell.exe -NoProfile -STA -ExecutionPolicy Bypass -File .\Tests\Test-DesignerStartup.ps1
+        run: pwsh.exe -NoProfile -STA -File .\Tests\Test-Repository.ps1
+
+      - name: Parse repository with Windows PowerShell 5.1
+        shell: cmd
+        run: powershell.exe -NoProfile -STA -File .\Tests\Test-Repository.ps1
+
+      - name: Core behavior tests with PowerShell 7
+        shell: cmd
+        run: pwsh.exe -NoProfile -STA -File .\Tests\Test-DesignerCore.ps1
+
+      - name: Core behavior tests with Windows PowerShell 5.1
+        shell: cmd
+        run: powershell.exe -NoProfile -STA -File .\Tests\Test-DesignerCore.ps1
+
+      - name: Generated code tests with PowerShell 7
+        shell: cmd
+        run: pwsh.exe -NoProfile -STA -File .\Tests\Test-CodeGeneration.ps1
+
+      - name: Generated code tests with Windows PowerShell 5.1
+        shell: cmd
+        run: powershell.exe -NoProfile -STA -File .\Tests\Test-CodeGeneration.ps1
+
+      - name: Designer startup smoke test with PowerShell 7
+        shell: cmd
+        run: pwsh.exe -NoProfile -STA -File .\Tests\Test-DesignerStartup.ps1
+
+      - name: Designer startup smoke test with Windows PowerShell 5.1
+        shell: cmd
+        run: powershell.exe -NoProfile -STA -File .\Tests\Test-DesignerStartup.ps1

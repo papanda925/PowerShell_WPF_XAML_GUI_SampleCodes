@@ -34,13 +34,14 @@ instead of depending on `Click="Button1_Click"` in XAML.
 - PowerShell + WPF only; no Visual Studio and no third-party module required at runtime.
 - New / Open / Save / Save As for paired `.xaml` and `.ps1` files.
 - Runtime-discovered toolbox for public, instantiable WPF visual element types.
-- Toolbox search and category filtering.
+- Toolbox search plus a beginner-oriented Common category with short control descriptions.
+- Drag-and-drop, double-click, or an explicit Add selected control button for inserting controls.
 - Drag and drop from the toolbox to Canvas/Grid/StackPanel/DockPanel/WrapPanel/UniformGrid layouts and supported empty single-child containers such as Border and GroupBox.
 - Direct mouse movement for controls whose parent is a `Canvas`.
 - Arrow-key Canvas movement (1 px, or 10 px with Shift) plus optional 10-pixel mouse snap-to-grid.
 - XAML document Outline, including selection/editing of the root Window.
 - Selection of controls on the preview surface.
-- Undo/redo for designer-side XAML changes, while text editors keep their native text undo/redo.
+- Undo/redo for designer-side changes restores XAML and generated PowerShell together, while text editors keep native text undo/redo.
 - Reflection-based property browser and property editing, including Canvas/Grid/DockPanel attached properties.
 - Reflection-based event browser.
 - Double-click an event to generate PowerShell event code.
@@ -52,23 +53,28 @@ instead of depending on `Click="Button1_Click"` in XAML.
 - Automatic synchronization of named XAML controls into a generated control-reference region in the paired `.ps1` file.
 - Generated event handlers are placed in a dedicated region before `$Window.ShowDialog()`, so handlers are registered before the UI runs.
 - Existing user event code is not overwritten when control references are refreshed.
-- Save As warns before replacing an already-existing paired `.ps1` file.
+- Deleting controls archives their generated event handlers as comments instead of leaving broken references or silently discarding the code.
+- Safe preview blocks risky loose-XAML constructs/custom CLR elements and prevents automatic external resource navigation.
+- Save As warns before replacing an already-existing paired `.ps1` file; paired saves use temporary files/rollback and UTF-8 BOM for Windows PowerShell 5.1/Japanese compatibility.
 
 ### Start the designer
 
-Windows PowerShell 5.1:
+From a PowerShell prompt:
 
-```powershell
-powershell.exe -STA -ExecutionPolicy Bypass -File .\XamlDesigner\Start-XamlDesigner.ps1
-```
+~~~powershell
+.\XamlDesigner\Start-XamlDesigner.ps1
+~~~
 
-PowerShell 7 on Windows:
+If the current process is not STA, the launcher attempts to relaunch the same PowerShell executable in STA mode automatically. It does not bypass the machine's execution policy.
 
-```powershell
-pwsh.exe -STA -File .\XamlDesigner\Start-XamlDesigner.ps1
-```
+Explicit launch examples:
 
-WPF requires Windows and an STA thread.
+~~~powershell
+powershell.exe -NoProfile -STA -File .\XamlDesigner\Start-XamlDesigner.ps1
+pwsh.exe -NoProfile -STA -File .\XamlDesigner\Start-XamlDesigner.ps1
+~~~
+
+For a Japanese beginner walkthrough, see [XamlDesigner/GETTING_STARTED.ja.md](./XamlDesigner/GETTING_STARTED.ja.md). The requested 50 simulated persona reviews are recorded in [XamlDesigner/REVIEW_50_PERSONAS.md](./XamlDesigner/REVIEW_50_PERSONAS.md).
 
 ## Design direction
 

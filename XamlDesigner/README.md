@@ -2,6 +2,8 @@
 
 A standalone WPF/XAML visual editor implemented with PowerShell and Windows WPF.
 
+**New to PowerShell/WPF?** Start with [GETTING_STARTED.ja.md](./GETTING_STARTED.ja.md). The latest 50-pass simulated persona review is documented in [REVIEW_50_PERSONAS.md](./REVIEW_50_PERSONAS.md).
+
 ## Why this exists
 
 PowerShell can build useful Windows desktop tools with WPF and XAML, but the normal graphical WPF authoring experience is closely associated with Visual Studio / Blend. In managed corporate PCs, labs, lightweight admin environments, or personal setups, those tools may be unavailable or restricted.
@@ -69,7 +71,9 @@ The toolbox is not a small hard-coded list. At startup, PowerShell reflects over
 - can be instantiated with a public parameterless constructor,
 - are suitable to appear as visual elements.
 
-Types are grouped as Controls, Panels, Shapes, Decorators, and Other. Search filters by short and fully-qualified type name.
+Beginners start in the **Common** category, which contains frequently used controls with a short description. **All** still exposes the full runtime-discovered catalog. Search matches the type name, full type name, and beginner description.
+
+A control can be inserted by drag-and-drop, double-clicking the toolbox item, or pressing **Add selected control**, so drag-and-drop is not required.
 
 Root-only objects such as another `Window` are intentionally excluded from drag/drop insertion.
 
@@ -106,7 +110,7 @@ Selecting a visual element uses .NET reflection and `TypeDescriptor` to enumerat
 
 High-value WPF properties are sorted near the top. Attached properties such as `Canvas.Left`, `Canvas.Top`, `Grid.Row`, `Grid.Column`, row/column spans, `DockPanel.Dock`, and `Panel.ZIndex` are surfaced when applicable.
 
-A property change is first applied to the XML DOM and then reloaded into WPF. If WPF rejects the value, the XML change is rolled back.
+A property change is first applied to the XML DOM and then reloaded into WPF. If WPF rejects the value, both the XAML and generated PowerShell state are rolled back. The editor also displays type/enum hints for common beginner mistakes.
 
 ### Events
 
@@ -135,6 +139,8 @@ Double-clicking a control on the designer chooses a typical event when possible,
 
 The same control/event combination is not generated twice. Generated handlers are inserted into a dedicated event region before `$Window.ShowDialog()`, which guarantees that handlers are registered before the window is shown.
 
+When a control is deleted, its generated handlers are disabled and converted to commented `ArchivedEvent` blocks. This avoids runtime references to missing controls while preserving logic the user may have written inside the handler.
+
 ## Visual Studio / Blend XAML compatibility
 
 XAML exported from Visual Studio can contain information intended for a compiled WPF project, for example:
@@ -147,6 +153,20 @@ XAML exported from Visual Studio can contain information intended for a compiled
 A standalone PowerShell `XamlReader` has no compiled code-behind class that can resolve those handlers. The designer therefore creates an in-memory clone for preview and removes unsupported build/design attributes from that clone only.
 
 The paired PowerShell template uses the same principle at runtime. UI structure remains in `.xaml`; executable event registration remains in `.ps1`.
+
+## Safe preview
+
+Loose XAML can construct .NET objects while it is being loaded. Opening an untrusted file therefore should not be treated like opening inert text.
+
+Before XamlReader is called, the designer performs a safe-preview check. It blocks or neutralizes, among other things:
+
+- ObjectDataProvider and XmlDataProvider;
+- custom CLR elements/attached properties from clr-namespace:;
+- x:Code, factory-method/argument construction;
+- external ResourceDictionary Source;
+- automatic external/UNC Source, UriSource, or NavigateUri loading in the preview clone.
+
+Unused Visual Studio-style xmlns:local="clr-namespace:..." declarations are allowed when the actual elements are standard WPF controls. The original source document is preserved; preview-only cleanup is applied to an in-memory clone.
 
 ## Keyboard shortcuts
 
@@ -209,3 +229,9 @@ The next editor features with the highest value are:
 6. Project folder mode for multiple `.xaml` / `.ps1` pairs.
 
 These can remain PowerShell-only; no C# helper assembly is required for the core design.
+
+## File encoding and recovery
+
+Saved XAML/PowerShell pairs use UTF-8 with BOM so Japanese and other non-ASCII PowerShell code remains compatible with Windows PowerShell 5.1. On open, valid UTF-8 is preferred; legacy Windows code-page text is used only as a fallback for invalid UTF-8.
+
+Both temporary files are written before the target pair is overwritten. Existing targets are backed up during the save operation and are restored on a partial failure when possible.

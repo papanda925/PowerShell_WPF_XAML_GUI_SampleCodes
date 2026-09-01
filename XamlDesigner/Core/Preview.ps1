@@ -1,7 +1,27 @@
 function Get-RuntimePreviewDocument {
+    [void](Test-XamlPreviewSafety -Document $script:State.XamlDocument)
     $clone = [System.Xml.XmlDocument]$script:State.XamlDocument.CloneNode($true)
     Remove-PowerShellUnsupportedXamlAttributes -Document $clone
     return $clone
+}
+
+function Close-DesignerPreviewWindow {
+    param(
+        [System.Windows.Window]$Window
+    )
+
+    if ($null -eq $Window) {
+        return
+    }
+
+    try {
+        $Window.DataContext = $null
+        $Window.Close()
+    }
+    catch {
+        # The preview Window is never shown, and some WPF objects do not need
+        # explicit cleanup. Releasing references is sufficient in that case.
+    }
 }
 
 function Find-VisualElementByName {
@@ -18,7 +38,6 @@ function Find-VisualElementByName {
             return $Root
         }
 
-        # FindName is fast when the element belongs to this namescope.
         try {
             $named = $Root.FindName($Name)
             if ($named -is [System.Windows.FrameworkElement]) {
@@ -30,7 +49,6 @@ function Find-VisualElementByName {
         }
     }
 
-    # Prefer the visual tree, but not every WPF DependencyObject is a Visual.
     try {
         $count = [System.Windows.Media.VisualTreeHelper]::GetChildrenCount($Root)
         for ($i = 0; $i -lt $count; $i++) {
@@ -71,10 +89,12 @@ function Get-NamedFrameworkElementFromOriginalSource {
 
     $current = $OriginalSource
     while ($null -ne $current) {
-        if ($current -is [System.Windows.FrameworkElement] -and -not [string]::IsNullOrWhiteSpace($current.Name)) {
-            if ($null -ne (Get-XamlElementByName -Name $current.Name)) {
-                return $current
-            }
+        if (
+            $current -is [System.Windows.FrameworkElement] -and
+            -not [string]::IsNullOrWhiteSpace($current.Name) -and
+            $null -ne (Get-XamlElementByName -Name $current.Name)
+        ) {
+            return $current
         }
 
         if ($current -isnot [System.Windows.DependencyObject]) {
@@ -103,6 +123,7 @@ function Get-NamedFrameworkElementFromOriginalSource {
         }
         $current = $parent
     }
+
     return $null
 }
 
@@ -116,7 +137,11 @@ function Refresh-Preview {
     )
 
     $selectionName = $script:State.SelectedElementName
+    $previousPreviewWindow = $script:State.PreviewWindow
+
     try {
+        # All safety checks and object construction happen before replacing the
+        # currently visible preview, so a failed edit does not blank the screen.
         $runtimeDocument = Get-RuntimePreviewDocument
         $reader = [System.Xml.XmlNodeReader]::new($runtimeDocument)
         try {
@@ -130,7 +155,6 @@ function Refresh-Preview {
             throw 'The root XAML element must be a WPF Window for this designer.'
         }
 
-        $script:State.PreviewWindow = $loadedRoot
         $content = $loadedRoot.Content
         $loadedRoot.Content = $null
 
@@ -138,6 +162,11 @@ function Refresh-Preview {
         $host.Children.Clear()
         if ($null -ne $content) {
             [void]$host.Children.Add($content)
+        }
+
+        $script:State.PreviewWindow = $loadedRoot
+        if ($null -ne $previousPreviewWindow -and $previousPreviewWindow -ne $loadedRoot) {
+            Close-DesignerPreviewWindow -Window $previousPreviewWindow
         }
 
         $width = $loadedRoot.Width
@@ -167,12 +196,12 @@ function Refresh-Preview {
 
         Refresh-DocumentOutline
         Refresh-SelectionPanels
-        Set-DesignerStatus -Message 'XAML preview updated successfully.'
+        Set-DesignerStatus -Message 'XAML preview updated safely.'
         return $true
     }
     catch {
-        $script:State.PreviewWindow = $null
-        Set-DesignerStatus -Message ("XAML preview error: " + $_.Exception.Message)
+        $script:State.PreviewWindow = $previousPreviewWindow
+        Set-DesignerStatus -Message ("XAML preview blocked/error: " + $_.Exception.Message)
         return $false
     }
 }
@@ -182,6 +211,7 @@ function Update-DocumentCaption {
     if (-not [string]::IsNullOrWhiteSpace($script:State.CurrentXamlPath)) {
         $display = Split-Path -Leaf $script:State.CurrentXamlPath
     }
+
     $dirtyMarker = if (Test-DesignerDocumentDirty) { '*' } else { '' }
     $script:State.Ui.DocumentText.Text = "$display$dirtyMarker"
     $script:State.Window.Title = "PowerShell XAML Designer - $display$dirtyMarker"

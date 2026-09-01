@@ -1,14 +1,14 @@
-function Initialize-UiReferences {
+﻿function Initialize-UiReferences {
     param(
         [Parameter(Mandatory)]
         [System.Windows.Window]$Window
     )
 
     $names = @(
-        'MenuNew','MenuOpen','MenuSave','MenuSaveAs','MenuExit','MenuUndo','MenuRedo','MenuDelete','MenuDuplicate','MenuValidate','MenuRefreshToolbox','MenuAbout',
-        'StatusText','DocumentText','ToolboxSearch','ToolboxCategory','ToolboxList','OutlineTree','MainTabs','PreviewBorder','PreviewHost','CheckSnapToGrid',
+        'MenuNew','MenuOpen','MenuSave','MenuSaveAs','MenuExit','MenuUndo','MenuRedo','MenuDelete','MenuDuplicate','MenuValidate','MenuRefreshToolbox','MenuGettingStarted','MenuAbout',
+        'StatusText','DocumentText','ToolboxSearch','ToolboxCategory','ToolboxList','ButtonAddToolbox','ToolboxHelpText','OutlineTree','MainTabs','PreviewBorder','PreviewHost','CheckSnapToGrid',
         'ButtonDelete','ButtonDuplicate','ButtonApplyXaml','ButtonFormatXaml','ButtonValidateCode','XamlEditor','CodeEditor','SelectedControlText','PropertyGrid',
-        'PropertyNameText','PropertyValueText','ButtonApplyProperty','EventGrid'
+        'PropertyNameText','PropertyValueText','PropertyHelpText','ButtonApplyProperty','EventGrid'
     )
 
     foreach ($name in $names) {
@@ -37,6 +37,30 @@ function Register-UiEvents {
     $ui.MenuDuplicate.Add_Click({ Duplicate-SelectedElement })
     $ui.MenuValidate.Add_Click({ [void](Apply-XamlEditorText) })
     $ui.MenuRefreshToolbox.Add_Click({ Refresh-ToolboxCatalog })
+    $ui.MenuGettingStarted.Add_Click({
+        $message = @'
+PowerShell XAML Designer - Getting Started
+
+1. Choose a control in Toolbox. "Common" is recommended for beginners.
+2. Double-click it, press "Add selected control", or drag it onto the Designer.
+3. Click the new control on the Designer.
+4. Choose a property on the right, edit its value, and press "Apply property".
+5. Double-click a control to create its common PowerShell event handler.
+6. Press Ctrl+S to save the .xaml and paired .ps1 files.
+
+Tip: Canvas is easiest for free positioning. Grid is better when you are ready to build structured layouts.
+
+日本語:
+左の Toolbox から部品を選び、ダブルクリックまたは「Add selected control」で追加できます。
+右の Properties で値を変更し、部品をダブルクリックすると代表的なイベントコードを生成できます。
+'@
+        [System.Windows.MessageBox]::Show(
+            $message,
+            'Getting Started',
+            [System.Windows.MessageBoxButton]::OK,
+            [System.Windows.MessageBoxImage]::Information
+        ) | Out-Null
+    })
     $ui.MenuAbout.Add_Click({
         [System.Windows.MessageBox]::Show(
             "PowerShell XAML Designer`r`n`r`nA dependency-free WPF/XAML visual editor implemented in PowerShell. XAML defines the UI; a paired .ps1 file contains control references and event logic.",
@@ -88,6 +112,22 @@ function Register-UiEvents {
 
     $ui.ToolboxSearch.Add_TextChanged({ Apply-ToolboxFilter })
     $ui.ToolboxCategory.Add_SelectionChanged({ Apply-ToolboxFilter })
+
+    $ui.ToolboxList.Add_SelectionChanged({
+        $item = $ui.ToolboxList.SelectedItem
+        if ($null -eq $item) {
+            $ui.ToolboxHelpText.Text = 'Select a control to see what it is used for.'
+            return
+        }
+
+        $ui.ToolboxHelpText.Text = "$($item.DisplayName): $($item.Description)"
+    })
+    $ui.ButtonAddToolbox.Add_Click({ Add-SelectedToolboxItem })
+    $ui.ToolboxList.Add_MouseDoubleClick({
+        if ($null -ne $ui.ToolboxList.SelectedItem) {
+            Add-SelectedToolboxItem
+        }
+    })
 
     $ui.ToolboxList.Add_PreviewMouseLeftButtonDown({
         param($sender, $e)
@@ -252,6 +292,7 @@ function Register-UiEvents {
         }
         $ui.PropertyNameText.Text = "$($item.Name)  [$($item.TypeName)]"
         $ui.PropertyValueText.Text = [string]$item.Value
+        $ui.PropertyHelpText.Text = [string]$item.Help
     })
     $ui.ButtonApplyProperty.Add_Click({ Apply-SelectedProperty })
     $ui.PropertyValueText.Add_KeyDown({

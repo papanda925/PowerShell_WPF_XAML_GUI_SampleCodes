@@ -3,41 +3,84 @@ function Reset-XamlHistory {
     $script:State.RedoStack.Clear()
 }
 
+function New-DesignerHistorySnapshot {
+    param(
+        [string]$XamlText,
+        [string]$CodeText,
+        [string]$SelectionName
+    )
+
+    if ([string]::IsNullOrEmpty($XamlText) -and $null -ne $script:State.XamlDocument) {
+        $XamlText = ConvertTo-FormattedXml -Document $script:State.XamlDocument
+    }
+    if ($null -eq $CodeText -and $null -ne $script:State.Ui.CodeEditor) {
+        $CodeText = $script:State.Ui.CodeEditor.Text
+    }
+    if ($null -eq $SelectionName) {
+        $SelectionName = $script:State.SelectedElementName
+    }
+
+    return [pscustomobject]@{
+        XamlText = [string]$XamlText
+        CodeText = [string]$CodeText
+        SelectionName = [string]$SelectionName
+    }
+}
+
+function Test-DesignerHistorySnapshotsEqual {
+    param(
+        [Parameter(Mandatory)]
+        [object]$Left,
+
+        [Parameter(Mandatory)]
+        [object]$Right
+    )
+
+    return (
+        [string]$Left.XamlText -ceq [string]$Right.XamlText -and
+        [string]$Left.CodeText -ceq [string]$Right.CodeText -and
+        [string]$Left.SelectionName -ceq [string]$Right.SelectionName
+    )
+}
+
 function Push-XamlUndoSnapshot {
     param(
-        [string]$Text
+        [string]$Text,
+        [string]$CodeText,
+        [string]$SelectionName
     )
 
     if ($script:State.IsRestoringHistory -or $null -eq $script:State.XamlDocument) {
         return
     }
 
-    if ([string]::IsNullOrEmpty($Text)) {
-        $Text = ConvertTo-FormattedXml -Document $script:State.XamlDocument
-    }
-
-    if ($script:State.UndoStack.Count -gt 0 -and $script:State.UndoStack.Peek() -ceq $Text) {
+    $snapshot = New-DesignerHistorySnapshot -XamlText $Text -CodeText $CodeText -SelectionName $SelectionName
+    if (
+        $script:State.UndoStack.Count -gt 0 -and
+        (Test-DesignerHistorySnapshotsEqual -Left $script:State.UndoStack.Peek() -Right $snapshot)
+    ) {
         return
     }
 
-    $script:State.UndoStack.Push($Text)
+    $script:State.UndoStack.Push($snapshot)
     $script:State.RedoStack.Clear()
 }
 
 function Restore-XamlHistorySnapshot {
     param(
         [Parameter(Mandatory)]
-        [string]$Text
+        [object]$Snapshot
     )
 
     $script:State.IsRestoringHistory = $true
     try {
-        $script:State.XamlDocument = New-XmlDocumentFromText -Text $Text
-        $script:State.SelectedElementName = $null
+        $script:State.XamlDocument = New-XmlDocumentFromText -Text ([string]$Snapshot.XamlText)
+        $script:State.Ui.CodeEditor.Text = [string]$Snapshot.CodeText
+        $script:State.SelectedElementName = [string]$Snapshot.SelectionName
         $script:State.SelectedRuntimeElement = $null
         Refresh-XamlTextFromDocument
-        Sync-CodeEditor
-        [void](Refresh-Preview)
+        [void](Refresh-Preview -KeepSelection)
+        Update-DocumentCaption
     }
     finally {
         $script:State.IsRestoringHistory = $false
@@ -50,11 +93,11 @@ function Undo-XamlDesignerChange {
         return
     }
 
-    $current = ConvertTo-FormattedXml -Document $script:State.XamlDocument
+    $current = New-DesignerHistorySnapshot
     $script:State.RedoStack.Push($current)
     $previous = $script:State.UndoStack.Pop()
-    Restore-XamlHistorySnapshot -Text $previous
-    Set-DesignerStatus -Message 'Undo completed.'
+    Restore-XamlHistorySnapshot -Snapshot $previous
+    Set-DesignerStatus -Message 'Undo completed for XAML and generated PowerShell changes.'
 }
 
 function Redo-XamlDesignerChange {
@@ -63,9 +106,9 @@ function Redo-XamlDesignerChange {
         return
     }
 
-    $current = ConvertTo-FormattedXml -Document $script:State.XamlDocument
+    $current = New-DesignerHistorySnapshot
     $script:State.UndoStack.Push($current)
     $next = $script:State.RedoStack.Pop()
-    Restore-XamlHistorySnapshot -Text $next
-    Set-DesignerStatus -Message 'Redo completed.'
+    Restore-XamlHistorySnapshot -Snapshot $next
+    Set-DesignerStatus -Message 'Redo completed for XAML and generated PowerShell changes.'
 }
