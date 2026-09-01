@@ -369,9 +369,9 @@ function Delete-SelectedElement {
 
     [void]$node.ParentNode.RemoveChild($node)
 
-    if (Get-Command Remove-GeneratedEventsForControl -ErrorAction SilentlyContinue) {
+    if (Get-Command Archive-GeneratedEventsForControl -ErrorAction SilentlyContinue) {
         foreach ($controlName in $deletedControlNames) {
-            $script:State.Ui.CodeEditor.Text = Remove-GeneratedEventsForControl -Code $script:State.Ui.CodeEditor.Text -ControlName $controlName
+            $script:State.Ui.CodeEditor.Text = Archive-GeneratedEventsForControl -Code $script:State.Ui.CodeEditor.Text -ControlName $controlName
         }
     }
 
@@ -380,7 +380,7 @@ function Delete-SelectedElement {
     Refresh-XamlTextFromDocument
     Sync-CodeEditor
     [void](Refresh-Preview)
-    Set-DesignerStatus -Message "Deleted $deletedName and cleaned generated event blocks for $($deletedControlNames.Count) named control(s) in that subtree. Code outside generated blocks was preserved."
+    Set-DesignerStatus -Message "Deleted $deletedName. Generated handlers for $($deletedControlNames.Count) named control(s) were disabled and archived as comments so your event code is not lost."
 }
 
 function Duplicate-SelectedElement {
