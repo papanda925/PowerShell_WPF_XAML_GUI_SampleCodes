@@ -1,4 +1,4 @@
-function Initialize-UiReferences {
+﻿function Initialize-UiReferences {
     param(
         [Parameter(Mandatory)]
         [System.Windows.Window]$Window
