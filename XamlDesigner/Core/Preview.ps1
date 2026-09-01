@@ -172,6 +172,7 @@ function Update-DocumentCaption {
     if (-not [string]::IsNullOrWhiteSpace($script:State.CurrentXamlPath)) {
         $display = Split-Path -Leaf $script:State.CurrentXamlPath
     }
-    $script:State.Ui.DocumentText.Text = $display
-    $script:State.Window.Title = "PowerShell XAML Designer - $display"
+    $dirtyMarker = if (Test-DesignerDocumentDirty) { '*' } else { '' }
+    $script:State.Ui.DocumentText.Text = "$display$dirtyMarker"
+    $script:State.Window.Title = "PowerShell XAML Designer - $display$dirtyMarker"
 }

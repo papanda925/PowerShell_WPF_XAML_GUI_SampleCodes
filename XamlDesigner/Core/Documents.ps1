@@ -1,4 +1,8 @@
 function New-XamlDesignerDocument {
+    if (-not (Confirm-ContinueWithUnsavedChanges)) {
+        return
+    }
+
     $script:State.XamlDocument = New-XmlDocumentFromText -Text (Get-BlankXamlText)
     $script:State.CurrentXamlPath = $null
     $script:State.CurrentCodePath = $null
@@ -8,10 +12,15 @@ function New-XamlDesignerDocument {
     Refresh-XamlTextFromDocument
     [void](Refresh-Preview)
     Update-DocumentCaption
+    Set-DocumentSavedSnapshot
     Set-DesignerStatus -Message 'Created a new XAML + PowerShell document pair.'
 }
 
 function Open-XamlDesignerDocument {
+    if (-not (Confirm-ContinueWithUnsavedChanges)) {
+        return
+    }
+
     $dialog = [Microsoft.Win32.OpenFileDialog]::new()
     $dialog.Filter = 'XAML files (*.xaml)|*.xaml|XML files (*.xml)|*.xml|All files (*.*)|*.*'
     $dialog.Title = 'Open XAML file'
@@ -41,6 +50,7 @@ function Open-XamlDesignerDocument {
         }
         Sync-CodeEditor
         Update-DocumentCaption
+        Set-DocumentSavedSnapshot
         Set-DesignerStatus -Message "Opened $($dialog.FileName)"
     }
     catch {
@@ -113,5 +123,6 @@ function Save-XamlDesignerDocument {
     [System.IO.File]::WriteAllText($script:State.CurrentCodePath, $script:State.Ui.CodeEditor.Text, [System.Text.UTF8Encoding]::new($false))
 
     Update-DocumentCaption
+    Set-DocumentSavedSnapshot
     Set-DesignerStatus -Message "Saved XAML and code-behind: $($script:State.CurrentXamlPath)"
 }

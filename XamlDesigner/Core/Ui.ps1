@@ -24,6 +24,13 @@ function Register-UiEvents {
     $ui.MenuSave.Add_Click({ Save-XamlDesignerDocument })
     $ui.MenuSaveAs.Add_Click({ Save-XamlDesignerDocument -SaveAs })
     $ui.MenuExit.Add_Click({ $script:State.Window.Close() })
+
+    $script:State.Window.Add_Closing({
+        param($sender, $e)
+        if (-not (Confirm-ContinueWithUnsavedChanges)) {
+            $e.Cancel = $true
+        }
+    })
     $ui.MenuDelete.Add_Click({ Delete-SelectedElement })
     $ui.MenuDuplicate.Add_Click({ Duplicate-SelectedElement })
     $ui.MenuValidate.Add_Click({ [void](Apply-XamlEditorText) })
@@ -36,6 +43,9 @@ function Register-UiEvents {
             [System.Windows.MessageBoxImage]::Information
         ) | Out-Null
     })
+
+    $ui.XamlEditor.Add_TextChanged({ Update-DocumentCaption })
+    $ui.CodeEditor.Add_TextChanged({ Update-DocumentCaption })
 
     $ui.ButtonDelete.Add_Click({ Delete-SelectedElement })
     $ui.ButtonDuplicate.Add_Click({ Duplicate-SelectedElement })

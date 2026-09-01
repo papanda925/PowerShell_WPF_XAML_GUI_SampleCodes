@@ -13,6 +13,8 @@ $script:State = [ordered]@{
     XamlDocument = $null
     CurrentXamlPath = $null
     CurrentCodePath = $null
+    SavedXamlText = $null
+    SavedCodeText = $null
     SelectedElementName = $null
     SelectedRuntimeElement = $null
     ToolboxItems = @()
@@ -49,4 +51,47 @@ function Get-UiControl {
         throw "Required UI control '$Name' was not found in XamlDesigner.xaml."
     }
     return $control
+}
+
+function Set-DocumentSavedSnapshot {
+    $script:State.SavedXamlText = $script:State.Ui.XamlEditor.Text
+    $script:State.SavedCodeText = $script:State.Ui.CodeEditor.Text
+    Update-DocumentCaption
+}
+
+function Test-DesignerDocumentDirty {
+    if ($null -eq $script:State.XamlDocument) {
+        return $false
+    }
+
+    return (
+        $script:State.Ui.XamlEditor.Text -cne [string]$script:State.SavedXamlText -or
+        $script:State.Ui.CodeEditor.Text -cne [string]$script:State.SavedCodeText
+    )
+}
+
+function Confirm-ContinueWithUnsavedChanges {
+    if (-not (Test-DesignerDocumentDirty)) {
+        return $true
+    }
+
+    $result = [System.Windows.MessageBox]::Show(
+        'The current XAML/PowerShell pair has unsaved changes. Save before continuing?',
+        'Unsaved changes',
+        [System.Windows.MessageBoxButton]::YesNoCancel,
+        [System.Windows.MessageBoxImage]::Question
+    )
+
+    switch ($result) {
+        ([System.Windows.MessageBoxResult]::Yes) {
+            Save-XamlDesignerDocument
+            return -not (Test-DesignerDocumentDirty)
+        }
+        ([System.Windows.MessageBoxResult]::No) {
+            return $true
+        }
+        default {
+            return $false
+        }
+    }
 }
