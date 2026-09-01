@@ -21,6 +21,10 @@ jobs:
           Add-Type -AssemblyName PresentationFramework
           [System.Windows.Window] | Out-String | Write-Host
 
+      - name: Test generated PowerShell code
+        shell: pwsh
+        run: .\Tests\Test-CodeGeneration.ps1
+
       - name: Smoke test designer startup in STA
         shell: cmd
         run: powershell.exe -NoProfile -STA -ExecutionPolicy Bypass -File .\Tests\Test-DesignerStartup.ps1
