@@ -31,6 +31,8 @@ function Register-UiEvents {
             $e.Cancel = $true
         }
     })
+    $ui.MenuUndo.Add_Click({ Undo-XamlDesignerChange })
+    $ui.MenuRedo.Add_Click({ Redo-XamlDesignerChange })
     $ui.MenuDelete.Add_Click({ Delete-SelectedElement })
     $ui.MenuDuplicate.Add_Click({ Duplicate-SelectedElement })
     $ui.MenuValidate.Add_Click({ [void](Apply-XamlEditorText) })
@@ -195,6 +197,7 @@ function Register-UiEvents {
             $left = [System.Windows.Controls.Canvas]::GetLeft($element)
             $top = [System.Windows.Controls.Canvas]::GetTop($element)
             if (-not [double]::IsNaN($left) -and -not [double]::IsNaN($top)) {
+                Push-XamlUndoSnapshot
                 Update-SelectedCanvasPosition -Left $left -Top $top
                 Refresh-PropertyGrid
                 Set-DesignerStatus -Message "Moved $($script:State.SelectedElementName) to $left, $top."
@@ -232,6 +235,8 @@ function Register-UiEvents {
         if ($ctrl -and $e.Key -eq [System.Windows.Input.Key]::O) { Open-XamlDesignerDocument; $e.Handled = $true; return }
         if ($ctrl -and $e.Key -eq [System.Windows.Input.Key]::S) { Save-XamlDesignerDocument; $e.Handled = $true; return }
         if ($ctrl -and $e.Key -eq [System.Windows.Input.Key]::D) { Duplicate-SelectedElement; $e.Handled = $true; return }
+        if ($ctrl -and $e.Key -eq [System.Windows.Input.Key]::Z) { Undo-XamlDesignerChange; $e.Handled = $true; return }
+        if ($ctrl -and $e.Key -eq [System.Windows.Input.Key]::Y) { Redo-XamlDesignerChange; $e.Handled = $true; return }
         if ($e.Key -eq [System.Windows.Input.Key]::Delete) { Delete-SelectedElement; $e.Handled = $true; return }
         if ($e.Key -eq [System.Windows.Input.Key]::F5) { [void](Apply-XamlEditorText); $e.Handled = $true; return }
     })

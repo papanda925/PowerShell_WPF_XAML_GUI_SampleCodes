@@ -8,6 +8,7 @@ foreach ($part in @(
     'Preview.ps1',
     'CodeBehind.ps1',
     'Documents.ps1',
+    'History.ps1',
     'ToolboxCatalog.ps1',
     'ToolboxEditing.ps1',
     'Properties.ps1',

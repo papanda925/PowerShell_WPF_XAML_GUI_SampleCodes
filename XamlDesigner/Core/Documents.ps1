@@ -8,6 +8,7 @@ function New-XamlDesignerDocument {
     $script:State.CurrentCodePath = $null
     $script:State.SelectedElementName = $null
     $script:State.SelectedRuntimeElement = $null
+    Reset-XamlHistory
     $script:State.Ui.CodeEditor.Text = Get-BlankCodeText
     Refresh-XamlTextFromDocument
     [void](Refresh-Preview)
@@ -40,6 +41,7 @@ function Open-XamlDesignerDocument {
 
         $script:State.CurrentXamlPath = $dialog.FileName
         $script:State.CurrentCodePath = [System.IO.Path]::ChangeExtension($dialog.FileName, '.ps1')
+        Reset-XamlHistory
         Refresh-XamlTextFromDocument
 
         if (Test-Path -LiteralPath $script:State.CurrentCodePath) {
@@ -78,6 +80,11 @@ function Apply-XamlEditorText {
     }
 
     $old = $script:State.XamlDocument
+    $oldText = if ($null -ne $old) { ConvertTo-FormattedXml -Document $old } else { $null }
+    $candidateText = ConvertTo-FormattedXml -Document $candidate
+    if (-not $script:State.IsRestoringHistory -and $null -ne $oldText -and $oldText -cne $candidateText) {
+        Push-XamlUndoSnapshot -Text $oldText
+    }
     $script:State.XamlDocument = $candidate
     if (-not (Refresh-Preview -KeepSelection)) {
         $script:State.XamlDocument = $old

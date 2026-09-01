@@ -96,6 +96,8 @@ function Add-ToolboxElementToDocument {
         [double]$Top = 20
     )
 
+    Push-XamlUndoSnapshot
+
     $container = Get-PrimaryDesignContainerNode
     if ($null -eq $container) {
         Set-DesignerStatus -Message 'No supported root layout container was found. Add a Canvas/Grid/StackPanel first in XAML source.'
@@ -145,6 +147,7 @@ function Delete-SelectedElement {
     if ($null -eq $node -or $node -eq $script:State.XamlDocument.DocumentElement) {
         return
     }
+    Push-XamlUndoSnapshot
     $deletedName = $script:State.SelectedElementName
     [void]$node.ParentNode.RemoveChild($node)
     $script:State.SelectedElementName = $null
@@ -163,6 +166,7 @@ function Duplicate-SelectedElement {
     if ($null -eq $node -or $node -eq $script:State.XamlDocument.DocumentElement) {
         return
     }
+    Push-XamlUndoSnapshot
     $newName = Copy-XamlElementNode -Source $node
     $script:State.SelectedElementName = $newName
     Refresh-XamlTextFromDocument

@@ -19,6 +19,9 @@
                 <MenuItem x:Name="MenuExit" Header="E_xit"/>
             </MenuItem>
             <MenuItem Header="_Edit">
+                <MenuItem x:Name="MenuUndo" Header="_Undo" InputGestureText="Ctrl+Z"/>
+                <MenuItem x:Name="MenuRedo" Header="_Redo" InputGestureText="Ctrl+Y"/>
+                <Separator/>
                 <MenuItem x:Name="MenuDelete" Header="_Delete selected control" InputGestureText="Del"/>
                 <MenuItem x:Name="MenuDuplicate" Header="_Duplicate selected control" InputGestureText="Ctrl+D"/>
             </MenuItem>

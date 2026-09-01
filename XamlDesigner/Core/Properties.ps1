@@ -136,6 +136,7 @@ function Apply-SelectedProperty {
     $propertyName = [string]$selected.Name
     $value = $script:State.Ui.PropertyValueText.Text
     $oldXml = ConvertTo-FormattedXml -Document $script:State.XamlDocument
+    Push-XamlUndoSnapshot -Text $oldXml
     $oldName = $script:State.SelectedElementName
 
     try {
