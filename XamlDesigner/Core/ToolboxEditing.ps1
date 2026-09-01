@@ -73,10 +73,42 @@ function Test-XamlLayoutContainerNode {
     return $Node.LocalName -in @('Canvas', 'Grid', 'StackPanel', 'WrapPanel', 'DockPanel', 'UniformGrid')
 }
 
+function Test-XamlSingleChildContainerNode {
+    param(
+        [Parameter(Mandatory)]
+        [System.Xml.XmlElement]$Node
+    )
+
+    return $Node.LocalName -in @('Border', 'GroupBox', 'ScrollViewer', 'Viewbox')
+}
+
+function Test-XamlNodeHasDirectElementChild {
+    param(
+        [Parameter(Mandatory)]
+        [System.Xml.XmlElement]$Node
+    )
+
+    foreach ($child in $Node.ChildNodes) {
+        if ($child -is [System.Xml.XmlElement]) {
+            return $true
+        }
+    }
+
+    return $false
+}
+
 function Get-PrimaryDesignContainerNode {
     if (-not [string]::IsNullOrWhiteSpace($script:State.SelectedElementName)) {
         $selectedNode = Get-XamlElementByName -Name $script:State.SelectedElementName
         if ($null -ne $selectedNode -and (Test-XamlLayoutContainerNode -Node $selectedNode)) {
+            return $selectedNode
+        }
+
+        if (
+            $null -ne $selectedNode -and
+            (Test-XamlSingleChildContainerNode -Node $selectedNode) -and
+            -not (Test-XamlNodeHasDirectElementChild -Node $selectedNode)
+        ) {
             return $selectedNode
         }
     }
@@ -114,7 +146,12 @@ function Add-ToolboxElementToDocument {
 
     $container = Get-PrimaryDesignContainerNode
     if ($null -eq $container) {
-        Set-DesignerStatus -Message 'No supported root layout container was found. Add a Canvas/Grid/StackPanel first in XAML source.'
+        Set-DesignerStatus -Message 'No supported target container was found. Select an empty Border/GroupBox/ScrollViewer/Viewbox or a Canvas/Grid/StackPanel-style panel.'
+        return
+    }
+
+    if ((Test-XamlSingleChildContainerNode -Node $container) -and (Test-XamlNodeHasDirectElementChild -Node $container)) {
+        Set-DesignerStatus -Message "$($container.LocalName) already contains a child. Select another container or edit XAML source."
         return
     }
 
