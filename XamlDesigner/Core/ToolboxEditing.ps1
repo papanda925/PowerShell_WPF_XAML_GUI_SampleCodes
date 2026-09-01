@@ -305,6 +305,10 @@ function Copy-XamlElementNode {
             continue
         }
 
+        if (Test-XamlNodeInSeparateNameScope -Node $node) {
+            continue
+        }
+
         $newName = New-UniqueCloneName -BaseName $node.LocalName -ReservedNames $reservedNames
         Set-ElementNameOnNode -Node $node -Name $newName
         $renameMap[$oldName] = $newName
@@ -349,10 +353,26 @@ function Delete-SelectedElement {
 
     Push-XamlUndoSnapshot
     $deletedName = $script:State.SelectedElementName
+    $deletedControlNames = [System.Collections.Generic.List[string]]::new()
+    foreach ($subtreeNode in @($node) + @($node.SelectNodes('.//*'))) {
+        if ($subtreeNode -isnot [System.Xml.XmlElement]) {
+            continue
+        }
+        if (Test-XamlNodeInSeparateNameScope -Node $subtreeNode) {
+            continue
+        }
+        $subtreeName = Get-ElementNameFromNode -Node $subtreeNode
+        if (-not [string]::IsNullOrWhiteSpace($subtreeName)) {
+            $deletedControlNames.Add($subtreeName)
+        }
+    }
+
     [void]$node.ParentNode.RemoveChild($node)
 
     if (Get-Command Remove-GeneratedEventsForControl -ErrorAction SilentlyContinue) {
-        $script:State.Ui.CodeEditor.Text = Remove-GeneratedEventsForControl -Code $script:State.Ui.CodeEditor.Text -ControlName $deletedName
+        foreach ($controlName in $deletedControlNames) {
+            $script:State.Ui.CodeEditor.Text = Remove-GeneratedEventsForControl -Code $script:State.Ui.CodeEditor.Text -ControlName $controlName
+        }
     }
 
     $script:State.SelectedElementName = $null
@@ -360,7 +380,7 @@ function Delete-SelectedElement {
     Refresh-XamlTextFromDocument
     Sync-CodeEditor
     [void](Refresh-Preview)
-    Set-DesignerStatus -Message "Deleted $deletedName. Designer-generated event blocks for that control were removed; code outside generated blocks was preserved."
+    Set-DesignerStatus -Message "Deleted $deletedName and cleaned generated event blocks for $($deletedControlNames.Count) named control(s) in that subtree. Code outside generated blocks was preserved."
 }
 
 function Duplicate-SelectedElement {
