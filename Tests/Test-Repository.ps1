@@ -17,11 +17,12 @@ Get-ChildItem -LiteralPath $repositoryRoot -Recurse -File -Include *.ps1,*.psm1 
 }
 
 Get-ChildItem -LiteralPath $repositoryRoot -Recurse -File -Include *.xaml | ForEach-Object {
+    $xamlFile = $_
     try {
         $settings = [System.Xml.XmlReaderSettings]::new()
         $settings.DtdProcessing = [System.Xml.DtdProcessing]::Prohibit
         $settings.XmlResolver = $null
-        $reader = [System.Xml.XmlReader]::Create($_.FullName, $settings)
+        $reader = [System.Xml.XmlReader]::Create($xamlFile.FullName, $settings)
         try {
             $document = [System.Xml.XmlDocument]::new()
             $document.XmlResolver = $null
@@ -32,7 +33,7 @@ Get-ChildItem -LiteralPath $repositoryRoot -Recurse -File -Include *.xaml | ForE
         }
     }
     catch {
-        $errorsFound.Add("XML parse error: $($_.FullName): $($_.Exception.Message)")
+        $errorsFound.Add("XML parse error: $($xamlFile.FullName): $($_.Exception.Message)")
     }
 }
 
