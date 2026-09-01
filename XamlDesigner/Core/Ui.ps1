@@ -64,6 +64,17 @@ function Register-UiEvents {
         }
     })
 
+    $ui.OutlineTree.Add_SelectedItemChanged({
+        $item = $ui.OutlineTree.SelectedItem
+        if ($null -eq $item -or [string]::IsNullOrWhiteSpace([string]$item.Tag)) {
+            return
+        }
+        $runtime = Find-VisualElementByName -Root $ui.PreviewHost -Name ([string]$item.Tag)
+        if ($runtime -is [System.Windows.FrameworkElement]) {
+            Select-DesignerElement -Element $runtime
+        }
+    })
+
     $ui.ToolboxSearch.Add_TextChanged({ Apply-ToolboxFilter })
     $ui.ToolboxCategory.Add_SelectionChanged({ Apply-ToolboxFilter })
 

@@ -157,6 +157,7 @@ function Refresh-Preview {
             }
         }
 
+        Refresh-DocumentOutline
         Refresh-SelectionPanels
         Set-DesignerStatus -Message 'XAML preview updated successfully.'
         return $true

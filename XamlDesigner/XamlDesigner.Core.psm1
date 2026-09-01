@@ -6,6 +6,7 @@ foreach ($part in @(
     'State.ps1',
     'Xml.ps1',
     'Preview.ps1',
+    'Outline.ps1',
     'CodeBehind.ps1',
     'Documents.ps1',
     'History.ps1',

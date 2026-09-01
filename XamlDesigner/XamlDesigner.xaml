@@ -53,20 +53,33 @@
                 <ColumnDefinition Width="360" MinWidth="260"/>
             </Grid.ColumnDefinitions>
 
-            <!-- Toolbox -->
-            <DockPanel Grid.Column="0" Margin="8">
-                <TextBlock DockPanel.Dock="Top" Text="Toolbox" FontWeight="Bold" FontSize="16" Margin="0,0,0,8"/>
-                <TextBox x:Name="ToolboxSearch" DockPanel.Dock="Top" Margin="0,0,0,8" ToolTip="Filter WPF controls"/>
-                <ComboBox x:Name="ToolboxCategory" DockPanel.Dock="Top" Margin="0,0,0,8" SelectedIndex="0">
-                    <ComboBoxItem Content="All"/>
-                    <ComboBoxItem Content="Controls"/>
-                    <ComboBoxItem Content="Panels"/>
-                    <ComboBoxItem Content="Shapes"/>
-                    <ComboBoxItem Content="Decorators"/>
-                    <ComboBoxItem Content="Other"/>
-                </ComboBox>
-                <ListBox x:Name="ToolboxList" DisplayMemberPath="DisplayName"/>
-            </DockPanel>
+            <!-- Toolbox / document outline -->
+            <TabControl Grid.Column="0" Margin="8">
+                <TabItem Header="Toolbox">
+                    <DockPanel Margin="4">
+                        <TextBlock DockPanel.Dock="Top" Text="WPF elements" FontWeight="Bold" FontSize="15" Margin="0,0,0,8"/>
+                        <TextBox x:Name="ToolboxSearch" DockPanel.Dock="Top" Margin="0,0,0,8" ToolTip="Filter WPF controls"/>
+                        <ComboBox x:Name="ToolboxCategory" DockPanel.Dock="Top" Margin="0,0,0,8" SelectedIndex="0">
+                            <ComboBoxItem Content="All"/>
+                            <ComboBoxItem Content="Controls"/>
+                            <ComboBoxItem Content="Panels"/>
+                            <ComboBoxItem Content="Shapes"/>
+                            <ComboBoxItem Content="Decorators"/>
+                            <ComboBoxItem Content="Other"/>
+                        </ComboBox>
+                        <ListBox x:Name="ToolboxList" DisplayMemberPath="DisplayName"/>
+                    </DockPanel>
+                </TabItem>
+                <TabItem Header="Outline">
+                    <DockPanel Margin="4">
+                        <TextBlock DockPanel.Dock="Top"
+                                   Text="XAML document tree"
+                                   FontWeight="Bold"
+                                   Margin="0,0,0,8"/>
+                        <TreeView x:Name="OutlineTree"/>
+                    </DockPanel>
+                </TabItem>
+            </TabControl>
 
             <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch"/>
 
