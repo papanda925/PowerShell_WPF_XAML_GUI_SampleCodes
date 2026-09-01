@@ -1,5 +1,54 @@
 # PowerShell WPF XAML GUI Sample Codes / PowerShell XAML Designer
 
+PowerShell だけで WPF/XAML の画面を作成・編集するためのデザイナーと、すぐに動かせる GUI サンプル集です。Visual Studio や追加モジュールを実行時に必要としません。
+
+## はじめに（日本語）
+
+### 動作環境
+
+- Windows 10 / 11
+- Windows PowerShell 5.1 または PowerShell 7
+- WPF を表示できるデスクトップ環境
+
+PowerShell 7 では、WPF のために `-STA` を付けて起動してください。
+
+### XAML デザイナーを起動する
+
+```powershell
+git clone https://github.com/papanda925/PowerShell_WPF_XAML_GUI_SampleCodes.git
+Set-Location .\PowerShell_WPF_XAML_GUI_SampleCodes
+pwsh.exe -NoProfile -STA -File .\XamlDesigner\Start-XamlDesigner.ps1
+```
+
+Windows PowerShell 5.1 の場合は、最後の行を次に置き換えます。
+
+```powershell
+powershell.exe -NoProfile -STA -File .\XamlDesigner\Start-XamlDesigner.ps1
+```
+
+基本操作は [日本語スタートガイド](./XamlDesigner/GETTING_STARTED.ja.md)、設計と制限事項は [デザイナーのREADME](./XamlDesigner/README.md) を参照してください。
+
+### 収録サンプル
+
+| サンプル | 内容 | 実行例 |
+|---|---|---|
+| `WPF_CustomGraphicalInputBoxSample.ps1` | テキスト入力ダイアログ。OK時に入力文字列を返します | `.\WPF_CustomGraphicalInputBoxSample.ps1` |
+| `WPF_GraphicalDatePickerSample.ps1` | 日付選択ダイアログ。OK時に `DateTime` を返します | `.\WPF_GraphicalDatePickerSample.ps1` |
+| `WPF_SimpleWeatherFormSample` | Grid / StackPanel と画像のレイアウト例 | `.\WPF_SimpleWeatherFormSample\WPF_SimpleWeatherFormSample.ps1` |
+| `WPF_InkCanvas.ps1` | InkCanvas の手書き入力例 | `.\WPF_InkCanvas.ps1` |
+| `WPF_OCR_Sample.ps1` | Windows OCR API の利用例 | `.\WPF_OCR_Sample.ps1` |
+
+入力・日付サンプルは、キャンセル時には値を返しません。スクリプトと同じフォルダーの XAML を `$PSScriptRoot` から解決するため、どのカレントディレクトリからでも起動できます。
+
+### トラブルシューティング
+
+- `The term ... is not recognized`：リポジトリのルートへ移動してから、上記の相対パスで実行してください。
+- STA に関するエラー：`pwsh.exe -STA` または `powershell.exe -STA` で起動してください。
+- 実行ポリシーで停止する：管理者の許可なくポリシーを変更せず、組織のルールに従って署名・許可された方法で実行してください。
+- XAML の読み込みエラー：`x:Name` の重複、閉じタグ、名前空間、単体 `XamlReader` で利用できないイベント属性を確認してください。
+
+---
+
 This repository is being refocused around a **PowerShell-only WPF/XAML GUI designer** for Windows.
 
 The goal is to make it possible to create and maintain PowerShell WPF screens even in environments where Visual Studio, Blend, paid IDE add-ons, or third-party GUI designers cannot be installed or used.

@@ -57,6 +57,30 @@ foreach ($relativePath in $requiredFiles) {
     }
 }
 
+$standaloneSamples = @(
+    'WPF_CustomGraphicalInputBoxSample.ps1',
+    'WPF_GraphicalDatePickerSample.ps1',
+    'WPF_SimpleWeatherFormSample\WPF_SimpleWeatherFormSample.ps1'
+)
+foreach ($relativePath in $standaloneSamples) {
+    $samplePath = Join-Path $repositoryRoot $relativePath
+    if (-not (Test-Path -LiteralPath $samplePath)) {
+        $errorsFound.Add("Required standalone sample is missing: $relativePath")
+        continue
+    }
+
+    $sampleCode = [System.IO.File]::ReadAllText($samplePath)
+    if (-not $sampleCode.Contains('$PSScriptRoot')) {
+        $errorsFound.Add("Standalone sample must resolve assets from PSScriptRoot: $relativePath")
+    }
+    if ($sampleCode -match 'Get-Content\s+\.\\') {
+        $errorsFound.Add("Standalone sample still reads XAML from the current directory: $relativePath")
+    }
+    if ($sampleCode -match '(?i)\.add_[a-z]+\.Invoke\(') {
+        $errorsFound.Add("Standalone sample uses indirect event registration: $relativePath")
+    }
+}
+
 $templateCodePath = Join-Path $repositoryRoot 'XamlDesigner\Templates\BlankWindow.ps1'
 if (Test-Path -LiteralPath $templateCodePath) {
     $templateCode = [System.IO.File]::ReadAllText($templateCodePath)
@@ -114,4 +138,4 @@ if ($errorsFound.Count -gt 0) {
     throw "$($errorsFound.Count) repository validation error(s) found."
 }
 
-Write-Host 'PowerShell/XAML syntax, required files, generated markers, beginner UI, and CI policy checks passed.'
+Write-Host 'PowerShell/XAML syntax, standalone samples, required files, generated markers, beginner UI, and CI policy checks passed.'
