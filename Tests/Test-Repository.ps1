@@ -41,7 +41,10 @@ $requiredFiles = @(
     'XamlDesigner\XamlDesigner.xaml',
     'XamlDesigner\XamlDesigner.Core.psm1',
     'XamlDesigner\Templates\BlankWindow.xaml',
-    'XamlDesigner\Templates\BlankWindow.ps1'
+    'XamlDesigner\Templates\BlankWindow.ps1',
+    'XamlDesigner\GETTING_STARTED.ja.md',
+    'XamlDesigner\REVIEW_50_PERSONAS.md',
+    'Tests\Test-DesignerCore.ps1'
 )
 foreach ($relativePath in $requiredFiles) {
     if (-not (Test-Path -LiteralPath (Join-Path $repositoryRoot $relativePath))) {
@@ -51,7 +54,7 @@ foreach ($relativePath in $requiredFiles) {
 
 $templateCodePath = Join-Path $repositoryRoot 'XamlDesigner\Templates\BlankWindow.ps1'
 if (Test-Path -LiteralPath $templateCodePath) {
-    $templateCode = Get-Content -LiteralPath $templateCodePath -Raw
+    $templateCode = [System.IO.File]::ReadAllText($templateCodePath)
     foreach ($marker in @(
         '# <XamlDesigner:XamlFile>',
         '# </XamlDesigner:XamlFile>',
@@ -66,9 +69,44 @@ if (Test-Path -LiteralPath $templateCodePath) {
     }
 }
 
+
+$workflowPath = Join-Path $repositoryRoot '.github\workflows\powershell-xaml-designer.yml'
+if (Test-Path -LiteralPath $workflowPath) {
+    $workflowText = [System.IO.File]::ReadAllText($workflowPath)
+    if ($workflowText -match '(?i)ExecutionPolicy\s+Bypass') {
+        $errorsFound.Add('CI must not normalize ExecutionPolicy Bypass for this enterprise-oriented tool.')
+    }
+    foreach ($requiredCommand in @(
+        'Test-DesignerCore.ps1',
+        'Test-CodeGeneration.ps1',
+        'Test-DesignerStartup.ps1',
+        'powershell.exe',
+        'pwsh.exe'
+    )) {
+        if (-not $workflowText.Contains($requiredCommand)) {
+            $errorsFound.Add("CI workflow is missing expected coverage: $requiredCommand")
+        }
+    }
+}
+
+$designerUiPath = Join-Path $repositoryRoot 'XamlDesigner\XamlDesigner.xaml'
+if (Test-Path -LiteralPath $designerUiPath) {
+    $designerUiText = [System.IO.File]::ReadAllText($designerUiPath)
+    foreach ($requiredName in @(
+        'MenuGettingStarted',
+        'ButtonAddToolbox',
+        'ToolboxHelpText',
+        'PropertyHelpText'
+    )) {
+        if (-not $designerUiText.Contains('x:Name="' + $requiredName + '"')) {
+            $errorsFound.Add("Beginner/accessibility UI control is missing: $requiredName")
+        }
+    }
+}
+
 if ($errorsFound.Count -gt 0) {
     $errorsFound | ForEach-Object { Write-Error $_ }
     throw "$($errorsFound.Count) repository validation error(s) found."
 }
 
-Write-Host 'PowerShell syntax, XAML/XML well-formedness, required files, and generated-code marker checks passed.'
+Write-Host 'PowerShell/XAML syntax, required files, generated markers, beginner UI, and CI policy checks passed.'
