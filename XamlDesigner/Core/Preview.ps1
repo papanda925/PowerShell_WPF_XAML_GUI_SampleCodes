@@ -13,18 +13,53 @@ function Find-VisualElementByName {
         [string]$Name
     )
 
-    if ($Root -is [System.Windows.FrameworkElement] -and $Root.Name -eq $Name) {
-        return $Root
-    }
+    if ($Root -is [System.Windows.FrameworkElement]) {
+        if ($Root.Name -eq $Name) {
+            return $Root
+        }
 
-    $count = [System.Windows.Media.VisualTreeHelper]::GetChildrenCount($Root)
-    for ($i = 0; $i -lt $count; $i++) {
-        $child = [System.Windows.Media.VisualTreeHelper]::GetChild($Root, $i)
-        $match = Find-VisualElementByName -Root $child -Name $Name
-        if ($null -ne $match) {
-            return $match
+        # FindName is fast when the element belongs to this namescope.
+        try {
+            $named = $Root.FindName($Name)
+            if ($named -is [System.Windows.FrameworkElement]) {
+                return $named
+            }
+        }
+        catch {
+            # Continue with tree traversal; not every element owns a namescope.
         }
     }
+
+    # Prefer the visual tree, but not every WPF DependencyObject is a Visual.
+    try {
+        $count = [System.Windows.Media.VisualTreeHelper]::GetChildrenCount($Root)
+        for ($i = 0; $i -lt $count; $i++) {
+            $child = [System.Windows.Media.VisualTreeHelper]::GetChild($Root, $i)
+            $match = Find-VisualElementByName -Root $child -Name $Name
+            if ($null -ne $match) {
+                return $match
+            }
+        }
+    }
+    catch {
+        # Fall through to LogicalTreeHelper.
+    }
+
+    try {
+        foreach ($child in [System.Windows.LogicalTreeHelper]::GetChildren($Root)) {
+            if ($child -isnot [System.Windows.DependencyObject]) {
+                continue
+            }
+            $match = Find-VisualElementByName -Root $child -Name $Name
+            if ($null -ne $match) {
+                return $match
+            }
+        }
+    }
+    catch {
+        # Some templated/content objects expose neither traversable tree.
+    }
+
     return $null
 }
 
@@ -41,10 +76,32 @@ function Get-NamedFrameworkElementFromOriginalSource {
                 return $current
             }
         }
+
         if ($current -isnot [System.Windows.DependencyObject]) {
             break
         }
-        $current = [System.Windows.Media.VisualTreeHelper]::GetParent($current)
+
+        $parent = $null
+        try {
+            $parent = [System.Windows.Media.VisualTreeHelper]::GetParent($current)
+        }
+        catch {
+            # ContentElements are not Visuals.
+        }
+
+        if ($null -eq $parent) {
+            try {
+                $parent = [System.Windows.LogicalTreeHelper]::GetParent($current)
+            }
+            catch {
+                $parent = $null
+            }
+        }
+
+        if ($null -eq $parent) {
+            break
+        }
+        $current = $parent
     }
     return $null
 }
