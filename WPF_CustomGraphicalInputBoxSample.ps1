@@ -1,52 +1,40 @@
-#presentationframeworkを読み込み
-Add-Type -AssemblyName presentationframework
+[CmdletBinding()]
+param()
 
-#XAMLファイルを読み込んでxmlに変換
-[System.Xml.XmlDocument]$xaml = Get-Content .\WPF_CustomGraphicalInputBoxSample.xaml
-$xaml.GetType().FullName
-#visual studio でデザインした場合に付与され、Powershellで読み込む時に不要な要素を削除
-$xaml.window.RemoveAttribute("x:Class")
-$xaml.window.RemoveAttribute("mc:Ignorable")
+Set-StrictMode -Version Latest
+$ErrorActionPreference = 'Stop'
 
-#読み込んだxamlをXmlNodeReaderにキャスト
-[System.Xml.XmlNodeReader]$xamlReader = $xaml -as "System.Xml.XmlNodeReader"
-$xamlReader.GetType().FullName
-#Windows.Markup.XamlReaderで読み込み
-[System.Windows.Window]$mainWindow = [Windows.Markup.XamlReader]::Load($xamlReader)
-$mainWindow.gettype().FullName
+Add-Type -AssemblyName PresentationFramework
 
-#各種コントロールを取得
-[System.Windows.Controls.Button]$okButton = $mainWindow.FindName("OkButton")
-$okButton.gettype().FullName
-[System.Windows.Controls.Button]$CancelButton = $mainWindow.FindName("CancelButton")
-$CancelButton.gettype().FullName
-[System.Windows.Controls.TextBox]$TextBox = $mainWindow.FindName("TextBox")
-$TextBox.gettype().FullName
-[System.Windows.Controls.Label]$Label = $mainWindow.FindName("Label")
-$Label.gettype().FullName
+# 呼び出し元のカレントディレクトリに依存せず、スクリプトと同じ場所の XAML を読む。
+$xamlPath = Join-Path $PSScriptRoot 'WPF_CustomGraphicalInputBoxSample.xaml'
+[xml]$xaml = Get-Content -LiteralPath $xamlPath -Raw
 
-#イベントを追加
-$okButton.add_Click.Invoke({
-    Write-Output "Using $textBox.Text" | Out-Host 
+# Visual Studio が追加する、単体の XamlReader では不要な属性を取り除く。
+$xamlRoot = $xaml.DocumentElement
+[void]$xamlRoot.RemoveAttribute('Class', 'http://schemas.microsoft.com/winfx/2006/xaml')
+[void]$xamlRoot.RemoveAttribute('Ignorable', 'http://schemas.openxmlformats.org/markup-compatibility/2006')
+
+$xamlReader = [System.Xml.XmlNodeReader]::new($xaml)
+try {
+    [System.Windows.Window]$mainWindow = [System.Windows.Markup.XamlReader]::Load($xamlReader)
+}
+finally {
+    $xamlReader.Close()
+}
+
+[System.Windows.Controls.Button]$okButton = $mainWindow.FindName('OkButton')
+[System.Windows.Controls.Button]$cancelButton = $mainWindow.FindName('CancelButton')
+[System.Windows.Controls.TextBox]$textBox = $mainWindow.FindName('TextBox')
+
+$okButton.Add_Click({
     $mainWindow.DialogResult = $true
-    $mainWindow.Close()
-    return  
 })
-$CancelButton.add_Click.Invoke({
-    Write-Output "Cancel Click Bye" | Out-Host 
+$cancelButton.Add_Click({
     $mainWindow.DialogResult = $false
-    $mainWindow.Close()
-    return     
 })
 
-#表示
-#$mainWindow.showDialog() | out-null
-[System.Boolean]$result = $mainWindow.showDialog()
-$result.GetType().FullName
-Write-Output "Result is $result" | Out-Host 
-
-if ($result -eq  $true )
-{
-    $x = $textBox.Text
-    $x
+$result = $mainWindow.ShowDialog()
+if ($result -eq $true) {
+    $textBox.Text
 }

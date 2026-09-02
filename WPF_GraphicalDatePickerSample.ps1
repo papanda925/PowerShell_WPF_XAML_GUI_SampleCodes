@@ -1,57 +1,47 @@
-#presentationframeworkを読み込み
-Add-Type -AssemblyName presentationframework
+[CmdletBinding()]
+param()
 
-#XAMLファイルを読み込んでxmlに変換
-[System.Xml.XmlDocument]$xaml = Get-Content .\WPF_GraphicalDatePickerSample.xaml
-$xaml.GetType().FullName
-#visual studio でデザインした場合に付与され、Powershellで読み込む時に不要な要素を削除
-$xaml.window.RemoveAttribute("x:Class")
-$xaml.window.RemoveAttribute("mc:Ignorable")
+Set-StrictMode -Version Latest
+$ErrorActionPreference = 'Stop'
 
-#読み込んだxamlをXmlNodeReaderにキャスト
-[System.Xml.XmlNodeReader]$xamlReader = $xaml -as "System.Xml.XmlNodeReader"
-$xamlReader.GetType().FullName
-#Windows.Markup.XamlReaderで読み込み
-[System.Windows.Window]$mainWindow = [Windows.Markup.XamlReader]::Load($xamlReader)
-$mainWindow.gettype().FullName
+Add-Type -AssemblyName PresentationFramework
 
-#各種コントロールを取得
-[System.Windows.Controls.Button]$okButton = $mainWindow.FindName("OKButton")
-$okButton.gettype().FullName
-[System.Windows.Controls.Button]$CancelButton = $mainWindow.FindName("CancelButton")
-$CancelButton.gettype().FullName
-#[System.Windows.Controls.TextBox]$TextBox = $mainWindow.FindName("TextBox")
-#$TextBox.gettype().FullName
-[System.Windows.Controls.Label]$Label = $mainWindow.FindName("Label")
-$Label.gettype().FullName
-[System.Windows.Controls.Calendar]$Calendar = $mainWindow.FindName("Calendar")
-$Calendar.gettype().FullName
+$xamlPath = Join-Path $PSScriptRoot 'WPF_GraphicalDatePickerSample.xaml'
+[xml]$xaml = Get-Content -LiteralPath $xamlPath -Raw
 
-$Calendar.SelectedDate = [datetime]::Now
-$Label.Content =  $Calendar.SelectedDate.ToString("'Today:' yyyy/MM/dd")
+$xamlRoot = $xaml.DocumentElement
+[void]$xamlRoot.RemoveAttribute('Class', 'http://schemas.microsoft.com/winfx/2006/xaml')
+[void]$xamlRoot.RemoveAttribute('Ignorable', 'http://schemas.openxmlformats.org/markup-compatibility/2006')
 
-#イベントを追加
-$okButton.add_Click.Invoke({
-#    Write-Output "Using $textBox.Text" | Out-Host 
+$xamlReader = [System.Xml.XmlNodeReader]::new($xaml)
+try {
+    [System.Windows.Window]$mainWindow = [System.Windows.Markup.XamlReader]::Load($xamlReader)
+}
+finally {
+    $xamlReader.Close()
+}
+
+[System.Windows.Controls.Button]$okButton = $mainWindow.FindName('OKButton')
+[System.Windows.Controls.Button]$cancelButton = $mainWindow.FindName('CancelButton')
+[System.Windows.Controls.Label]$label = $mainWindow.FindName('Label')
+[System.Windows.Controls.Calendar]$calendar = $mainWindow.FindName('Calendar')
+
+$calendar.SelectedDate = [datetime]::Today
+$label.Content = ([datetime]$calendar.SelectedDate).ToString("'Selected:' yyyy/MM/dd")
+$calendar.Add_SelectedDatesChanged({
+    if ($null -ne $calendar.SelectedDate) {
+        $label.Content = ([datetime]$calendar.SelectedDate).ToString("'Selected:' yyyy/MM/dd")
+    }
+})
+
+$okButton.Add_Click({
     $mainWindow.DialogResult = $true
-    $mainWindow.Close()
-    return  
 })
-$CancelButton.add_Click.Invoke({
-    Write-Output "Cancel Click Bye" | Out-Host 
+$cancelButton.Add_Click({
     $mainWindow.DialogResult = $false
-    $mainWindow.Close()
-    return     
 })
 
-#表示
-#$mainWindow.showDialog() | out-null
-[System.Boolean]$result = $mainWindow.showDialog()
-$result.GetType().FullName
-Write-Output "Result is $result" | Out-Host 
-
-if ($result -eq $true )
-{
-    $x = $Calendar.SelectedDate.ToString()
-    $x
+$result = $mainWindow.ShowDialog()
+if (($result -eq $true) -and ($null -ne $calendar.SelectedDate)) {
+    [datetime]$calendar.SelectedDate
 }

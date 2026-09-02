@@ -1,43 +1,30 @@
-#参考URL
-#https://docs.microsoft.com/en-us/windows/apps/design/layout/grid-tutorial
-#Tutorial: Use Grid and StackPanel to create a simple weather app より
+[CmdletBinding()]
+param()
 
-#presentationframeworkを読み込み
-Add-Type -AssemblyName presentationframework
+Set-StrictMode -Version Latest
+$ErrorActionPreference = 'Stop'
 
-#動的絶対パスを作成
-$scriptPath = $MyInvocation.MyCommand.Path
-Write-Output  "---------scriptPath ------------"
-Write-Output  $scriptPath
-$scriptPath2 = Split-Path -Parent $scriptPath
-Write-Output  "---------scriptPath2------------"
-Write-Output  $scriptPath2
-$ImagePath = Join-Path $scriptPath2 "partially-cloudy.png"
-Write-Output  "----------ImagePath-------------"
-Write-Output  $ImagePath
-Write-Output  "--------------------------------"
+# 参考: https://learn.microsoft.com/windows/apps/design/layout/grid-tutorial
+Add-Type -AssemblyName PresentationFramework
 
-#XAMLファイルを読み込んでxmlに変換
-[System.Xml.XmlDocument]$xaml = Get-Content .\WPF_SimpleWeatherFormSample.xaml
+$xamlPath = Join-Path $PSScriptRoot 'WPF_SimpleWeatherFormSample.xaml'
+$imagePath = Join-Path $PSScriptRoot 'partially-cloudy.png'
+[xml]$xaml = Get-Content -LiteralPath $xamlPath -Raw
 
-#visual studio でデザインした場合に付与され、Powershellで読み込む時に不要な要素を削除
-$xaml.window.RemoveAttribute("x:Class")
-$xaml.window.RemoveAttribute("mc:Ignorable")
+$xamlRoot = $xaml.DocumentElement
+[void]$xamlRoot.RemoveAttribute('Class', 'http://schemas.microsoft.com/winfx/2006/xaml')
+[void]$xamlRoot.RemoveAttribute('Ignorable', 'http://schemas.openxmlformats.org/markup-compatibility/2006')
 
-#読み込んだxamlをXmlNodeReaderにキャスト
-[System.Xml.XmlNodeReader]$xamlReader = $xaml -as "System.Xml.XmlNodeReader"
-$xamlReader.GetType().FullName
-#Windows.Markup.XamlReaderで読み込み
-[System.Windows.Window]$mainWindow = [Windows.Markup.XamlReader]::Load($xamlReader)
-$mainWindow.gettype().FullName
+$xamlReader = [System.Xml.XmlNodeReader]::new($xaml)
+try {
+    [System.Windows.Window]$mainWindow = [System.Windows.Markup.XamlReader]::Load($xamlReader)
+}
+finally {
+    $xamlReader.Close()
+}
 
-#各種コントロールを取得
-[System.Windows.Controls.Image]$Image = $mainWindow.FindName("imageData")
-$Image.gettype().FullName
-$Image.Source = $ImagePath #絶対パスでないとエラーとなるため、動的取得の絶対パスを再設定
+[System.Windows.Controls.Image]$image = $mainWindow.FindName('imageData')
+$image.Source = $imagePath
 
-#表示
-[System.Boolean]$result = $mainWindow.showDialog()
-$result.GetType().FullName
-Write-Output "Result is $result" | Out-Host 
+[void]$mainWindow.ShowDialog()
 
